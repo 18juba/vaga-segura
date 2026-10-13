@@ -431,6 +431,65 @@
 				</p>
 			</section>
 		{/if}
+
+		<section class="helpline-section" id="disque-180" aria-labelledby="helpline-title">
+			<div class="helpline-intro">
+				<div class="helpline-copy">
+					<p class="helpline-kicker">Apoio e informação</p>
+					<h2 id="helpline-title">Você pode buscar orientação pelo Ligue 180.</h2>
+					<p>
+						A Central orienta sobre direitos e serviços de atendimento à mulher. Você pode ligar
+						para tirar dúvidas ou pedir ajuda para encontrar um serviço perto de você.
+					</p>
+				</div>
+				<a class="helpline-number" href="tel:180" aria-label="Ligar para o Ligue 180">
+					<span>Disque</span>
+					<strong>180</strong>
+					<span>gratuito · 24 horas</span>
+				</a>
+			</div>
+
+			<div class="helpline-video">
+				<iframe
+					src="https://www.youtube-nocookie.com/embed/y9ysRfE4rPk?rel=0"
+					title="Vídeo sobre a Central de Atendimento à Mulher Ligue 180"
+					loading="lazy"
+					referrerpolicy="strict-origin-when-cross-origin"
+					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+					allowfullscreen
+				></iframe>
+			</div>
+
+			<div class="helpline-details">
+				<div class="helpline-how">
+					<h3>Como ligar</h3>
+					<ol>
+						<li>Abra o aplicativo Telefone do celular ou use um telefone fixo.</li>
+						<li>Digite <strong>180</strong> e toque no botão para ligar.</li>
+						<li>Peça orientação, tire dúvidas ou conte o que está acontecendo.</li>
+					</ol>
+					<p>Você também pode ligar para buscar orientação para outra mulher.</p>
+				</div>
+				<div class="helpline-actions">
+					<a
+						class="helpline-primary"
+						href="https://www.gov.br/mulheres/pt-br/ligue180"
+						target="_blank"
+						rel="noreferrer">Conheça a Central e os serviços disponíveis</a
+					>
+					<a class="helpline-secondary" href="tel:180">Ligar para 180</a>
+					<a
+						class="helpline-secondary"
+						href="https://wa.me/556196100180"
+						target="_blank"
+						rel="noreferrer">Conversar pelo WhatsApp</a
+					>
+					<p class="helpline-emergency">
+						Se houver perigo imediato ou uma agressão estiver acontecendo, ligue <a href="tel:190">190</a>.
+					</p>
+				</div>
+			</div>
+		</section>
 	</main>
 </div>
 
@@ -1151,6 +1210,179 @@
 		font-size: 10px;
 		line-height: 1.5;
 	}
+	.helpline-section {
+		margin-top: 24px;
+		padding: 24px;
+		color: #fffaf8;
+		background: var(--plum);
+		border-radius: 16px;
+	}
+	.helpline-intro {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 24px;
+		margin-bottom: 18px;
+	}
+	.helpline-copy {
+		max-width: 570px;
+	}
+	.helpline-kicker {
+		margin: 0 0 7px;
+		color: #f0b9c2;
+		font-size: 11px;
+		font-weight: 700;
+	}
+	.helpline-copy h2 {
+		max-width: 520px;
+		margin: 0 0 8px;
+		font-family: 'Fraunces', Georgia, serif;
+		font-size: clamp(25px, 4vw, 34px);
+		font-weight: 500;
+		letter-spacing: -0.7px;
+		line-height: 1.12;
+	}
+	.helpline-copy > p:last-child {
+		max-width: 560px;
+		margin: 0;
+		color: #e8dce8;
+		font-size: 12px;
+		line-height: 1.6;
+	}
+	.helpline-number {
+		flex: 0 0 auto;
+		display: grid;
+		justify-items: center;
+		gap: 1px;
+		min-width: 126px;
+		padding: 10px 14px 11px;
+		color: #fffaf8;
+		background: rgba(255, 255, 255, 0.08);
+		border: 1px solid rgba(255, 255, 255, 0.25);
+		border-radius: 12px;
+		text-decoration: none;
+	}
+	.helpline-number span {
+		color: #e8dce8;
+		font-size: 9px;
+	}
+	.helpline-number strong {
+		color: #fffaf8;
+		font-family: 'Fraunces', Georgia, serif;
+		font-size: 38px;
+		font-weight: 600;
+		line-height: 1;
+	}
+	.helpline-video {
+		position: relative;
+		width: 100%;
+		aspect-ratio: 16 / 9;
+		overflow: hidden;
+		background: #211527;
+		border: 1px solid rgba(255, 255, 255, 0.15);
+		border-radius: 12px;
+	}
+	.helpline-video iframe {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		border: 0;
+	}
+	.helpline-details {
+		display: grid;
+		grid-template-columns: minmax(0, 1.1fr) minmax(230px, 0.9fr);
+		gap: 24px;
+		margin-top: 20px;
+		padding-top: 18px;
+		border-top: 1px solid rgba(255, 255, 255, 0.2);
+	}
+	.helpline-how h3 {
+		margin: 0 0 10px;
+		color: #fffaf8;
+		font-size: 14px;
+	}
+	.helpline-how ol {
+		display: grid;
+		gap: 8px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		counter-reset: call-step;
+	}
+	.helpline-how li {
+		position: relative;
+		min-height: 22px;
+		padding-left: 27px;
+		color: #f1e9f0;
+		font-size: 11px;
+		line-height: 1.55;
+		counter-increment: call-step;
+	}
+	.helpline-how li::before {
+		position: absolute;
+		left: 0;
+		top: 0;
+		display: grid;
+		width: 19px;
+		height: 19px;
+		place-items: center;
+		color: #3a203f;
+		background: #f0b9c2;
+		border-radius: 50%;
+		content: counter(call-step);
+		font-size: 10px;
+		font-weight: 700;
+	}
+	.helpline-how li strong {
+		color: white;
+	}
+	.helpline-how > p {
+		margin: 11px 0 0;
+		color: #d9c9dc;
+		font-size: 10px;
+		line-height: 1.5;
+	}
+	.helpline-actions {
+		display: grid;
+		align-content: start;
+		gap: 7px;
+	}
+	.helpline-primary,
+	.helpline-secondary {
+		display: flex;
+		min-height: 38px;
+		align-items: center;
+		justify-content: center;
+		padding: 9px 12px;
+		border-radius: 8px;
+		font-size: 11px;
+		font-weight: 700;
+		text-align: center;
+		text-decoration: none;
+	}
+	.helpline-primary {
+		color: var(--plum);
+		background: #fffaf8;
+	}
+	.helpline-secondary {
+		color: #fffaf8;
+		background: rgba(255, 255, 255, 0.08);
+		border: 1px solid rgba(255, 255, 255, 0.32);
+	}
+	.helpline-emergency {
+		margin: 2px 0 0;
+		color: #f0c7cd;
+		font-size: 10px;
+		line-height: 1.5;
+		text-align: center;
+	}
+	.helpline-emergency a {
+		color: #fffaf8;
+		font-weight: 700;
+		text-underline-offset: 2px;
+	}
+
 	@keyframes spin {
 		to {
 			transform: rotate(360deg);
@@ -1201,6 +1433,39 @@
 		.result-card {
 			padding: 16px;
 			border-radius: 12px;
+		}
+		.helpline-section {
+			padding: 17px;
+			border-radius: 12px;
+		}
+		.helpline-intro {
+			flex-direction: column;
+			gap: 15px;
+		}
+		.helpline-details {
+			grid-template-columns: 1fr;
+			gap: 15px;
+		}
+		.helpline-intro {
+			margin-bottom: 14px;
+		}
+		.helpline-number {
+			grid-template-columns: auto auto auto;
+			align-items: center;
+			justify-items: start;
+			gap: 8px;
+			min-width: 0;
+			padding: 7px 12px;
+		}
+		.helpline-number strong {
+			font-size: 25px;
+		}
+		.helpline-number span {
+			font-size: 10px;
+		}
+		.helpline-details {
+			margin-top: 15px;
+			padding-top: 15px;
 		}
 		.local-note {
 			font-size: 0;
