@@ -13,6 +13,7 @@
 			text: 'Vaga para atendente de loja na Flor de Maio Comércio. Salário de R$ 1.850 por mês, vale-transporte e registro CLT. Jornada das 9h às 18h, de segunda a sexta. Entrevista presencial na Rua das Palmeiras, 120. A empresa informa CNPJ para consulta e recebe currículos pelo e-mail recrutamento@flordemaio.com. Não cobramos taxas. O processo inclui entrevista e contrato antes do início.'
 		}
 	];
+	const mockOcrText = examples[0].text;
 
 	let jobText = $state('');
 	let result = $state<Analysis | null>(null);
@@ -20,29 +21,62 @@
 	let errorMessage = $state('');
 	let imageName = $state('');
 	let imageUrl = $state('');
+	let ocrState = $state<'idle' | 'reading' | 'ready'>('idle');
+	let ocrTimer: number | undefined;
 	let fileInput: HTMLInputElement;
 
 	function useExample(text: string) {
+		removeImage();
+		ocrState = 'idle';
 		jobText = text;
 		result = null;
 		errorMessage = '';
+	}
+
+	function beginMockOcr() {
+		if (ocrTimer !== undefined) window.clearTimeout(ocrTimer);
+		jobText = '';
+		ocrState = 'reading';
+		ocrTimer = window.setTimeout(() => {
+			jobText = mockOcrText;
+			ocrState = 'ready';
+			ocrTimer = undefined;
+		}, 950);
+	}
+
+	function selectImage(url: string, name: string) {
+		if (imageUrl.startsWith('blob:')) URL.revokeObjectURL(imageUrl);
+		imageUrl = url;
+		imageName = name;
+		result = null;
+		errorMessage = '';
+		beginMockOcr();
 	}
 
 	function handleImageSelect(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		if (!file) return;
-		if (imageUrl) URL.revokeObjectURL(imageUrl);
-		imageUrl = URL.createObjectURL(file);
-		imageName = file.name;
-		result = null;
-		errorMessage = '';
+		if (!file.type.startsWith('image/')) {
+			errorMessage = 'Selecione um arquivo de imagem para continuar.';
+			input.value = '';
+			return;
+		}
+		selectImage(URL.createObjectURL(file), file.name);
+	}
+
+	function useMockPrint() {
+		if (fileInput) fileInput.value = '';
+		selectImage('/images/print-vaga-exemplo.svg', 'Print de exemplo');
 	}
 
 	function removeImage() {
-		if (imageUrl) URL.revokeObjectURL(imageUrl);
+		if (ocrTimer !== undefined) window.clearTimeout(ocrTimer);
+		ocrTimer = undefined;
+		if (imageUrl.startsWith('blob:')) URL.revokeObjectURL(imageUrl);
 		imageUrl = '';
 		imageName = '';
+		if (ocrState === 'reading') ocrState = 'idle';
 		if (fileInput) fileInput.value = '';
 	}
 
@@ -135,6 +169,7 @@
 		result = null;
 		errorMessage = '';
 		removeImage();
+		ocrState = 'idle';
 		const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 		document.getElementById('verificador')?.scrollIntoView({ behavior, block: 'center' });
 		document.getElementById('job-text')?.focus({ preventScroll: true });
@@ -150,7 +185,7 @@
 	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
 </svelte:head>
 
-<div class="app-shell max-w-3/4 mx-auto">
+<div class="app-shell">
 	<header class="app-header">
 		<a class="brand" href="#verificador" aria-label="Vaga Segura">
 			<span class="brand-mark" aria-hidden="true">
@@ -176,16 +211,35 @@
 			<div class="card-heading">
 				<div>
 					<h2 id="checker-title">Texto da oportunidade</h2>
-					<p>Não inclua seus dados pessoais.</p>
+					<p>Cole o texto ou anexe um print. Não inclua seus dados pessoais.</p>
 				</div>
 			</div>
+
+			{#if imageUrl}
+				<div class="attachment-preview">
+					<img src={imageUrl} alt="Prévia do print anexado" />
+					<div class="attachment-info">
+						<strong>{imageName}</strong>
+						<span>{imageName === 'Print de exemplo' ? 'Imagem fictícia para demonstração' : 'Prévia da imagem selecionada'}</span>
+					</div>
+					<button class="remove-attachment" type="button" onclick={removeImage} aria-label="Remover imagem">×</button>
+				</div>
+			{/if}
+
+			{#if ocrState !== 'idle'}
+				<div class="ocr-status" class:ocr-is-reading={ocrState === 'reading'} class:ocr-is-ready={ocrState === 'ready'} id="ocr-status" role="status" aria-live="polite">
+					<span class="ocr-status-mark" aria-hidden="true">{ocrState === 'reading' ? '…' : '✓'}</span>
+					<span>{ocrState === 'reading' ? 'Simulando leitura do print…' : 'Transcrição fictícia pré-carregada; o texto não foi extraído da imagem. Revise antes de analisar.'}</span>
+				</div>
+			{/if}
 
 			<label class="visually-hidden" for="job-text">Texto da vaga para analisar</label>
 			<textarea
 				id="job-text"
 				bind:value={jobText}
 				placeholder="Cole aqui a vaga ou a mensagem que você recebeu…"
-				aria-describedby="input-help"
+				aria-describedby={ocrState === 'idle' ? 'input-help' : 'input-help ocr-status'}
+				readonly={ocrState === 'reading'}
 				oninput={() => {
 					result = null;
 					errorMessage = '';
@@ -196,23 +250,14 @@
 				<span>{jobText.length} caracteres</span>
 			</div>
 
-			{#if imageUrl}
-				<div class="attachment-preview">
-					<img src={imageUrl} alt="Prévia do print anexado" />
-					<div class="attachment-info">
-						<strong>{imageName}</strong>
-						<span>Prévia do print · cole o texto para incluir na análise</span>
-					</div>
-					<button class="remove-attachment" type="button" onclick={removeImage} aria-label="Remover imagem">×</button>
-				</div>
-			{/if}
-
 			{#if errorMessage}<p class="input-error" role="alert">{errorMessage}</p>{/if}
 
 			<div class="actions">
-				<button class="analyze-button" type="button" onclick={analyze} disabled={analyzing}>
+				<button class="analyze-button" type="button" onclick={analyze} disabled={analyzing || ocrState === 'reading'}>
 					{#if analyzing}
 						<span class="button-spinner" aria-hidden="true"></span> Analisando…
+					{:else if ocrState === 'reading'}
+						<span class="button-spinner" aria-hidden="true"></span> Simulando OCR…
 					{:else}
 						<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
 							<circle cx="10.8" cy="10.8" r="7.4" />
@@ -237,6 +282,7 @@
 				{#each examples as example}
 					<button type="button" class="example-button" onclick={() => useExample(example.text)}>{example.label}</button>
 				{/each}
+				<button type="button" class="example-button" onclick={useMockPrint}>Print de exemplo</button>
 			</div>
 
 			{#if analyzing}
@@ -323,7 +369,7 @@
 	:global(button), :global(textarea) { font: inherit; }
 	:global(a:focus-visible), :global(button:focus-visible), :global(textarea:focus-visible), :global(input:focus-visible) { outline: 3px solid #bd5268; outline-offset: 3px; }
 
-	.app-shell { --plum: #3a203f; --berry: #b94e64; --guava: #d9707c; --paper: #fbf8f5; --muted: #777078; min-height: 100vh; padding: 0 24px 64px; }
+	.app-shell { --plum: #3a203f; --berry: #b94e64; --guava: #d9707c; --paper: #fbf8f5; --muted: #777078; width: min(100%, 880px); min-height: 100vh; margin: 0 auto; padding: 0 24px 64px; }
 	.app-header { min-height: 74px; display: flex; align-items: center; justify-content: space-between; margin: 0 auto; border-bottom: 1px solid #e9e1df; }
 	.brand { display: inline-flex; align-items: center; gap: 9px; color: var(--plum); font-size: 15px; letter-spacing: -.4px; text-decoration: none; }
 	.brand strong { font-weight: 700; }
@@ -346,12 +392,17 @@
 	textarea:focus { border-color: #b886a8; outline: none; box-shadow: 0 0 0 3px rgba(184,134,168,.12); }
 	.input-meta { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; color: #978e96; font-size: 9px; }
 	.visually-hidden, .file-input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-	.attachment-preview { display: flex; align-items: center; gap: 10px; margin-top: 11px; padding: 8px; background: #f4f0f3; border-radius: 9px; }
-	.attachment-preview img { width: 42px; height: 42px; object-fit: cover; border-radius: 6px; }
+	.attachment-preview { display: flex; align-items: center; gap: 12px; margin: 4px 0 12px; padding: 10px; background: #f4f0f3; border-radius: 9px; }
+	.attachment-preview img { width: 80px; height: 100px; flex: 0 0 80px; object-fit: contain; object-position: top; border-radius: 6px; background: white; }
 	.attachment-info { min-width: 0; display: grid; gap: 3px; }
 	.attachment-info strong { overflow: hidden; color: var(--plum); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 	.attachment-info span { color: #7c747d; font-size: 9px; }
 	.remove-attachment { width: 28px; height: 28px; margin-left: auto; color: #766b75; background: transparent; border: 0; border-radius: 50%; font-size: 19px; cursor: pointer; }
+	.ocr-status { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 10px; padding: 9px 11px; color: #655968; background: #f5eff6; border-radius: 8px; font-size: 10px; line-height: 1.5; }
+	.ocr-status-mark { width: 17px; height: 17px; flex: 0 0 17px; display: grid; place-items: center; color: #8b668c; background: #e9dfea; border-radius: 50%; font-size: 11px; font-weight: 700; }
+	.ocr-is-ready { color: #526b56; background: #edf3ed; }
+	.ocr-is-ready .ocr-status-mark { color: #55785c; background: #dce9dd; }
+	.ocr-is-reading .ocr-status-mark { color: var(--berry); animation: breathe 700ms ease-in-out infinite alternate; }
 	.input-error { margin: 9px 0 0; color: #a73b4f; font-size: 11px; }
 	.actions { display: flex; gap: 9px; margin-top: 14px; }
 	.analyze-button, .image-button, .new-analysis { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 14px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; transition: background 150ms ease, transform 150ms ease; }
