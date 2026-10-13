@@ -118,7 +118,7 @@
 </script>
 
 <svelte:head>
-	<title>Vaga Segura — confira antes de aceitar</title>
+	<title>esp.ia | Espião de Propostas</title>
 	<meta name="description" content="Confira sinais de alerta em uma oferta de trabalho." />
 	<meta name="theme-color" content="#fbf8f5" />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -132,22 +132,16 @@
 <div class="app-shell">
 	<header class="app-header">
 		<a class="brand" href="#verificador" aria-label="Vaga Segura">
-			<span class="brand-mark" aria-hidden="true">
-				<svg viewBox="0 0 40 40" fill="none">
-					<path d="M20 3.5 34 9v9.8c0 8.5-5.7 14.5-14 18-8.3-3.5-14-9.5-14-18V9l14-5.5Z" />
-					<path d="m13.5 19.8 4.1 4.1 9-9" />
-				</svg>
-			</span>
-			<span>vaga <strong>segura</strong></span>
+			<span><strong>esp.ia</strong></span>
 		</a>
-		<div class="size-16 rounded-lg p-2">
+		<div class="size-14 rounded-lg">
 			<img src="/images/ods5.png" alt="" aria-hidden="true" class="rounded-lg" />
 		</div>
 	</header>
 
 	<main>
 		<section class="mb-6">
-			<h1>Antes de aceitar,<br /><em>confira a vaga.</em></h1>
+			<h1>Antes de aceitar,<br /><em>cheque a proposta.</em></h1>
 			<p class="intro-copy">
 				Cole a mensagem ou o texto do anúncio. Vou destacar sinais de alerta e sugerir um próximo
 				passo.
