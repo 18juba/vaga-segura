@@ -1,7 +1,5 @@
 <script lang="ts">
-	type Level = 'baixo' | 'atenção' | 'alto';
-	type Finding = { title: string; detail: string; kind: 'alerta' | 'atenção' | 'informação' };
-	type Analysis = { score: number; level: Level; summary: string; findings: Finding[]; role: string };
+	import { analyzeVacancy, type Analysis } from '#lib/vaga/index.ts';
 
 	const examples = [
 		{
@@ -80,70 +78,6 @@
 		if (fileInput) fileInput.value = '';
 	}
 
-	function normalize(text: string) {
-		return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-	}
-
-	function assessVacancy(text: string): Analysis {
-		const source = normalize(text);
-		const findings: Finding[] = [];
-		let points = 0;
-
-		if (/foto.{0,35}(corpo|biquini|sensual)|(?:corpo|biquini).{0,35}foto|fotos? pessoais|selfie/.test(source)) {
-			findings.push({ title: 'Pede fotos pessoais', detail: 'Fotos do corpo ou de biquíni não fazem parte de uma seleção profissional.', kind: 'alerta' });
-			points += 38;
-		}
-		if (/\b(taxa|pix|pague|pagamento adiantado|investimento inicial|reserva de vaga)\b/.test(source)) {
-			findings.push({ title: 'Pede dinheiro antes da contratação', detail: 'Cobrar uma taxa, Pix ou pagamento para liberar uma vaga é um forte sinal de alerta.', kind: 'alerta' });
-			points += 34;
-		}
-		if (/salario.{0,35}alto.{0,35}sem experiencia|sem experiencia.{0,45}salario|r\$\s?[\d.]+.{0,35}sem experiencia/.test(source)) {
-			findings.push({ title: 'Promete salário alto sem experiência', detail: 'Uma promessa muito vantajosa sem requisitos claros merece confirmação por outro canal.', kind: 'atenção' });
-			points += 20;
-		}
-		if (/(urgente|so hoje|somente hoje|garantir a vaga|ultimas vagas|decida agora|nao conte para ninguem)/.test(source)) {
-			findings.push({ title: 'Pressiona para decidir rápido', detail: 'A urgência pode dificultar que você confira a empresa e converse com alguém de confiança.', kind: 'atenção' });
-			points += 17;
-		}
-		if (/(passagem|passagens|hospedagem|exterior|fora do pais|mudar de cidade)/.test(source) && /(sem contrato|nao precisa entrevista|sem entrevista|nao informamos cnpj|nao precisa de contrato)/.test(source)) {
-			findings.push({ title: 'Fala em viagem sem processo claro', detail: 'Deslocamento ou hospedagem sem contrato e sem identificação da empresa precisam ser checados.', kind: 'alerta' });
-			points += 23;
-		}
-		if (/(whatsapp|telegram|direct|mensagem privada)/.test(source) && /(somente|apenas|exclusivamente|chame|envie.*pelo)/.test(source)) {
-			findings.push({ title: 'Contato só por mensagem privada', detail: 'Tente localizar um canal oficial da empresa antes de enviar informações ou marcar um encontro.', kind: 'atenção' });
-			points += 12;
-		}
-		if (!/\bcnpj\b/.test(source)) {
-			findings.push({ title: 'Não informa CNPJ no texto', detail: 'Não encontramos esse dado no anúncio. A ausência não confirma golpe, mas vale pedir a identificação da empresa.', kind: 'atenção' });
-			points += 10;
-		}
-
-		const positiveSignals = [
-			/\bcnpj\b/.test(source),
-			/\b(clt|contrato|registro em carteira)\b/.test(source),
-			/(entrevista presencial|entrevista por video|processo seletivo)/.test(source),
-			/(endereco|rua|avenida|e-mail|email)/.test(source),
-			/(jornada|horario|vale-transporte|vale refeicao)/.test(source)
-		].filter(Boolean).length;
-		points = Math.max(4, Math.min(98, points - Math.min(positiveSignals, 3) * 4));
-
-		if (!findings.length) {
-			findings.push({ title: 'Nenhum alerta claro neste texto', detail: 'O anúncio traz algumas informações de trabalho. Ainda assim, confira os dados da empresa antes de aceitar.', kind: 'informação' });
-		}
-
-		const level: Level = points >= 55 ? 'alto' : points >= 27 ? 'atenção' : 'baixo';
-		const summary = level === 'alto'
-			? 'Encontramos sinais importantes. Pause a conversa e procure orientação antes de responder.'
-			: level === 'atenção'
-				? 'Há pontos que precisam ser confirmados. Não envie documentos nem dinheiro antes de checar.'
-				: 'Poucos sinais de alerta apareceram. Confira os dados da empresa antes de seguir.';
-		const role = /baba|cuidador|cuidadora/.test(source) ? 'cuidados e acompanhamento'
-			: /caixa|atendente|loja|vendas/.test(source) ? 'atendimento e comércio'
-				: /administrativ|escritorio|recepcionista/.test(source) ? 'rotinas administrativas'
-					: 'essa área profissional';
-		return { score: points, level, summary, findings, role };
-	}
-
 	function analyze() {
 		errorMessage = '';
 		if (jobText.trim().length < 25) {
@@ -153,16 +87,21 @@
 		result = null;
 		analyzing = true;
 		window.setTimeout(() => {
-			result = assessVacancy(jobText);
+			result = analyzeVacancy(jobText);
 			analyzing = false;
 			window.setTimeout(() => {
 				document.getElementById('analise-resultado')?.scrollIntoView({
-					behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+					behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+						? 'auto'
+						: 'smooth',
 					block: 'start'
 				});
 			}, 50);
-		}, 950);
+		}, 350);
 	}
+
+	const levelLabel = { alto: 'Risco alto', atencao: 'Atenção', baixo: 'Poucos alertas' } as const;
+	const scalePos = (score: number) => `${((score - 10) / 80) * 100}%`;
 
 	function startOver() {
 		jobText = '';
@@ -170,7 +109,9 @@
 		errorMessage = '';
 		removeImage();
 		ocrState = 'idle';
-		const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+		const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+			? 'auto'
+			: 'smooth';
 		document.getElementById('verificador')?.scrollIntoView({ behavior, block: 'center' });
 		document.getElementById('job-text')?.focus({ preventScroll: true });
 	}
@@ -182,7 +123,10 @@
 	<meta name="theme-color" content="#fbf8f5" />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+	<link
+		href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap"
+		rel="stylesheet"
+	/>
 </svelte:head>
 
 <div class="app-shell">
@@ -204,7 +148,10 @@
 	<main>
 		<section class="mb-6">
 			<h1>Antes de aceitar,<br /><em>confira a vaga.</em></h1>
-			<p class="intro-copy">Cole a mensagem ou o texto do anúncio. Vou destacar sinais de alerta e sugerir um próximo passo.</p>
+			<p class="intro-copy">
+				Cole a mensagem ou o texto do anúncio. Vou destacar sinais de alerta e sugerir um próximo
+				passo.
+			</p>
 		</section>
 
 		<section class="checker-card" id="verificador" aria-labelledby="checker-title">
@@ -220,16 +167,38 @@
 					<img src={imageUrl} alt="Prévia do print anexado" />
 					<div class="attachment-info">
 						<strong>{imageName}</strong>
-						<span>{imageName === 'Print de exemplo' ? 'Imagem fictícia para demonstração' : 'Prévia da imagem selecionada'}</span>
+						<span
+							>{imageName === 'Print de exemplo'
+								? 'Imagem fictícia para demonstração'
+								: 'Prévia da imagem selecionada'}</span
+						>
 					</div>
-					<button class="remove-attachment" type="button" onclick={removeImage} aria-label="Remover imagem">×</button>
+					<button
+						class="remove-attachment"
+						type="button"
+						onclick={removeImage}
+						aria-label="Remover imagem">×</button
+					>
 				</div>
 			{/if}
 
 			{#if ocrState !== 'idle'}
-				<div class="ocr-status" class:ocr-is-reading={ocrState === 'reading'} class:ocr-is-ready={ocrState === 'ready'} id="ocr-status" role="status" aria-live="polite">
-					<span class="ocr-status-mark" aria-hidden="true">{ocrState === 'reading' ? '…' : '✓'}</span>
-					<span>{ocrState === 'reading' ? 'Simulando leitura do print…' : 'Transcrição fictícia pré-carregada; o texto não foi extraído da imagem. Revise antes de analisar.'}</span>
+				<div
+					class="ocr-status"
+					class:ocr-is-reading={ocrState === 'reading'}
+					class:ocr-is-ready={ocrState === 'ready'}
+					id="ocr-status"
+					role="status"
+					aria-live="polite"
+				>
+					<span class="ocr-status-mark" aria-hidden="true"
+						>{ocrState === 'reading' ? '…' : '✓'}</span
+					>
+					<span
+						>{ocrState === 'reading'
+							? 'Simulando leitura do print…'
+							: 'Transcrição fictícia pré-carregada; o texto não foi extraído da imagem. Revise antes de analisar.'}</span
+					>
 				</div>
 			{/if}
 
@@ -243,8 +212,7 @@
 				oninput={() => {
 					result = null;
 					errorMessage = '';
-				}}
-			></textarea>
+				}}></textarea>
 			<div class="input-meta" id="input-help">
 				<span>Você pode editar o texto antes de analisar.</span>
 				<span>{jobText.length} caracteres</span>
@@ -253,7 +221,12 @@
 			{#if errorMessage}<p class="input-error" role="alert">{errorMessage}</p>{/if}
 
 			<div class="actions">
-				<button class="analyze-button" type="button" onclick={analyze} disabled={analyzing || ocrState === 'reading'}>
+				<button
+					class="analyze-button"
+					type="button"
+					onclick={analyze}
+					disabled={analyzing || ocrState === 'reading'}
+				>
 					{#if analyzing}
 						<span class="button-spinner" aria-hidden="true"></span> Analisando…
 					{:else if ocrState === 'reading'}
@@ -266,7 +239,14 @@
 						Analisar oportunidade
 					{/if}
 				</button>
-				<input bind:this={fileInput} class="file-input" type="file" accept="image/*" aria-label="Selecionar print da vaga" onchange={handleImageSelect} />
+				<input
+					bind:this={fileInput}
+					class="file-input"
+					type="file"
+					accept="image/*"
+					aria-label="Selecionar print da vaga"
+					onchange={handleImageSelect}
+				/>
 				<button class="image-button" type="button" onclick={() => fileInput?.click()}>
 					<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
 						<rect x="3.5" y="4" width="17" height="16" rx="2.5" />
@@ -279,16 +259,23 @@
 
 			<div class="examples">
 				<span>Experimente:</span>
-				{#each examples as example}
-					<button type="button" class="example-button" onclick={() => useExample(example.text)}>{example.label}</button>
+				{#each examples as example (example.label)}
+					<button type="button" class="example-button" onclick={() => useExample(example.text)}
+						>{example.label}</button
+					>
 				{/each}
-				<button type="button" class="example-button" onclick={useMockPrint}>Print de exemplo</button>
+				<button type="button" class="example-button" onclick={useMockPrint}>Print de exemplo</button
+				>
 			</div>
 
 			{#if analyzing}
 				<div class="analysis-loading" role="status" aria-live="polite">
 					<span class="loading-mark">✳</span>
-					<div><strong>Conferindo os sinais</strong><span>Esta análise é uma simulação local.</span></div>
+					<div>
+						<strong>Conferindo os sinais</strong><span
+							>A análise roda no seu aparelho; o texto não é enviado.</span
+						>
+					</div>
 				</div>
 			{/if}
 		</section>
@@ -298,41 +285,110 @@
 				class="result-card"
 				id="analise-resultado"
 				class:risk-high={result.level === 'alto'}
-				class:risk-medium={result.level === 'atenção'}
+				class:risk-medium={result.level === 'atencao'}
 				class:risk-low={result.level === 'baixo'}
 				aria-live="polite"
 			>
 				<div class="result-summary">
-					<div class="score">
-						<strong>{result.score}</strong><span>/100</span>
+					<div class="score" aria-label="Nota de risco {result.score} de 90">
+						<strong>{result.score}</strong><span>/90</span>
 					</div>
 					<div class="summary-copy">
-						<span class="risk-label">{result.level === 'alto' ? 'Risco alto' : result.level === 'atenção' ? 'Atenção' : 'Poucos alertas'}</span>
+						<span class="risk-label">{levelLabel[result.level]}</span>
 						<h2>{result.summary}</h2>
 					</div>
 					<button class="new-analysis" type="button" onclick={startOver}>Limpar</button>
 				</div>
 
-				<div class="findings">
-					<h3>Sinais encontrados</h3>
-					<ul>
-						{#each result.findings as finding}
-							<li>
-								<span class="finding-mark" class:mark-alert={finding.kind === 'alerta'} class:mark-caution={finding.kind === 'atenção'} class:mark-info={finding.kind === 'informação'} aria-hidden="true">
-									{finding.kind === 'alerta' ? '!' : finding.kind === 'atenção' ? '·' : '✓'}
-								</span>
-								<div><strong>{finding.title}</strong><span>{finding.detail}</span></div>
-							</li>
+				<div class="scale" aria-hidden="true">
+					<div class="scale-track">
+						<span class="scale-marker" style:left={scalePos(result.score)}></span>
+					</div>
+					<div class="scale-labels"><span>Baixo</span><span>Atenção</span><span>Alto</span></div>
+				</div>
+
+				<p class="breakdown">
+					Soma dos pesos: <strong>{result.rawPoints}</strong> ·
+					{result.signals.length}
+					{result.signals.length === 1 ? 'sinal encontrado' : 'sinais encontrados'}
+					{#if result.criticalCount}
+						· <strong
+							>{result.criticalCount} {result.criticalCount === 1 ? 'crítico' : 'críticos'}</strong
+						>
+					{/if}
+				</p>
+				{#if result.escalations.length}
+					<ul class="escalations">
+						{#each result.escalations as esc (esc.rule)}
+							<li>{esc.label}</li>
 						{/each}
 					</ul>
+				{/if}
+
+				<div class="findings">
+					<h3>Sinais encontrados</h3>
+					{#if result.signals.length}
+						<ul>
+							{#each result.signals as s (s.signal.id)}
+								<li>
+									<span
+										class="finding-mark"
+										class:mark-alert={s.signal.critical || s.signal.weight >= 4}
+										class:mark-caution={!s.signal.critical && s.signal.weight < 4}
+										aria-hidden="true">{s.signal.critical ? '!' : '·'}</span
+									>
+									<div>
+										<strong>
+											{s.signal.title}
+											<span class="weight">+{s.signal.weight}</span>
+											{#if s.signal.critical}<span class="critical-tag">crítico</span>{/if}
+										</strong>
+										<span>{s.signal.why}</span>
+										{#each s.evidence as e (e.start)}
+											<q class="evidence"
+												>{#each e.parts as part, i (i)}{#if part.mark}<mark>{part.text}</mark
+														>{:else}{part.text}{/if}{/each}</q
+											>
+										{/each}
+										{#each s.notes as note (note)}<small class="note">{note}</small>{/each}
+									</div>
+								</li>
+							{/each}
+						</ul>
+					{:else}
+						<p class="empty-findings">Nenhum sinal da nossa lista apareceu neste texto.</p>
+					{/if}
 				</div>
+
+				{#if result.review.length}
+					<div class="findings review">
+						<h3>Pontos para conferir <span>(não somam pontos)</span></h3>
+						<ul>
+							{#each result.review as s (s.signal.id)}
+								<li>
+									<span class="finding-mark mark-info" aria-hidden="true">?</span>
+									<div>
+										<strong>{s.signal.title}</strong>
+										{#each s.notes as note (note)}<span>{note}</span>{/each}
+										{#each s.evidence as e (e.start)}
+											<q class="evidence"
+												>{#each e.parts as part, i (i)}{#if part.mark}<mark>{part.text}</mark
+														>{:else}{part.text}{/if}{/each}</q
+											>
+										{/each}
+									</div>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
 
 				{#if result.level === 'alto'}
 					<div class="next-step support-panel" id="rede-de-apoio">
 						<div>
 							<span class="next-kicker">Você não precisa passar por isso sozinha</span>
 							<h3>Pause e procure orientação antes de responder.</h3>
-							<p>Não envie dinheiro, fotos íntimas ou documentos. Guarde as mensagens e converse com alguém de confiança.</p>
+							<p>{result.action} Guarde as mensagens e converse com alguém de confiança.</p>
 						</div>
 						<div class="support-links">
 							<a href="tel:180"><strong>180</strong><span>Ligue 180 · orientação e apoio</span></a>
@@ -341,163 +397,877 @@
 						</div>
 						<div class="job-links">
 							<span>Buscar vagas em canais oficiais</span>
-							<a href="https://www.gov.br/pt-br/servicos/buscar-emprego-no-sistema-nacional-de-emprego-sine" target="_blank" rel="noreferrer">SINE ↗</a>
-							<a href="https://idt.org.br/vagas-disponiveis" target="_blank" rel="noreferrer">IDT/SINE ↗</a>
+							<a
+								href="https://www.gov.br/pt-br/servicos/buscar-emprego-no-sistema-nacional-de-emprego-sine"
+								target="_blank"
+								rel="noreferrer">SINE ↗</a
+							>
+							<a href="https://idt.org.br/vagas-disponiveis" target="_blank" rel="noreferrer"
+								>IDT/SINE ↗</a
+							>
 						</div>
 					</div>
-				{:else if result.level === 'atenção'}
+				{:else if result.level === 'atencao'}
 					<div class="next-step caution-panel">
-						<div><span class="next-kicker">Antes de responder</span><h3>Confirme os dados da empresa.</h3><p>Não pague taxas nem envie fotos ou documentos antes de checar a oferta.</p></div>
+						<div>
+							<span class="next-kicker">Antes de responder</span>
+							<h3>Confirme os dados da empresa.</h3>
+							<p>{result.action}</p>
+						</div>
 						<a class="simple-link" href="tel:180">Precisa conversar? Ligue 180</a>
 					</div>
 				{:else}
 					<div class="next-step learning-panel">
-						<div><span class="next-kicker">Um próximo passo para {result.role}</span><h3>Explore uma formação gratuita.</h3><p>A análise encontrou poucos alertas, mas ainda vale confirmar a empresa.</p></div>
-						<a class="simple-link" href="https://www.ev.org.br/cursos/atendimento-ao-publico" target="_blank" rel="noreferrer">Atendimento ao Público · Fundação Bradesco ↗</a>
+						<div>
+							<span class="next-kicker">Um próximo passo para {result.role}</span>
+							<h3>Explore uma formação gratuita.</h3>
+							<p>{result.action}</p>
+						</div>
+						<a
+							class="simple-link"
+							href="https://www.ev.org.br/cursos/atendimento-ao-publico"
+							target="_blank"
+							rel="noreferrer">Atendimento ao Público · Fundação Bradesco ↗</a
+						>
 					</div>
 				{/if}
-				<p class="disclaimer">Resultado indicativo. Não confirma se a vaga é legítima ou fraudulenta.</p>
+				<p class="disclaimer">
+					Resultado indicativo, calculado pelos critérios da base de sinais Vaga Certa. Não confirma
+					se a vaga é legítima ou fraudulenta.
+				</p>
 			</section>
 		{/if}
 	</main>
 </div>
 
 <style>
-	:global(*) { box-sizing: border-box; }
-	:global(html) { scroll-behavior: smooth; scroll-padding-top: 24px; }
-	:global(body) { margin: 0; color: #352d35; background: #fbf8f5; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; }
-	:global(button), :global(textarea) { font: inherit; }
-	:global(a:focus-visible), :global(button:focus-visible), :global(textarea:focus-visible), :global(input:focus-visible) { outline: 3px solid #bd5268; outline-offset: 3px; }
+	:global(*) {
+		box-sizing: border-box;
+	}
+	:global(html) {
+		scroll-behavior: smooth;
+		scroll-padding-top: 24px;
+	}
+	:global(body) {
+		margin: 0;
+		color: #352d35;
+		background: #fbf8f5;
+		font-family: 'DM Sans', sans-serif;
+		-webkit-font-smoothing: antialiased;
+	}
+	:global(button),
+	:global(textarea) {
+		font: inherit;
+	}
+	:global(a:focus-visible),
+	:global(button:focus-visible),
+	:global(textarea:focus-visible),
+	:global(input:focus-visible) {
+		outline: 3px solid #bd5268;
+		outline-offset: 3px;
+	}
 
-	.app-shell { --plum: #3a203f; --berry: #b94e64; --guava: #d9707c; --paper: #fbf8f5; --muted: #777078; width: min(100%, 880px); min-height: 100vh; margin: 0 auto; padding: 0 24px 64px; }
-	.app-header { min-height: 74px; display: flex; align-items: center; justify-content: space-between; margin: 0 auto; border-bottom: 1px solid #e9e1df; }
-	.brand { display: inline-flex; align-items: center; gap: 9px; color: var(--plum); font-size: 15px; letter-spacing: -.4px; text-decoration: none; }
-	.brand strong { font-weight: 700; }
-	.brand-mark { width: 30px; height: 30px; display: grid; place-items: center; }
-	.brand-mark svg { width: 100%; stroke: var(--berry); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-	main { margin: 32px 0;}
-	#verificador { scroll-margin-top: 18px; }
-	h1, h2, h3, p { margin-top: 0; }
-	h1 { margin-bottom: 10px; color: var(--plum); font-family: 'Fraunces', Georgia, serif; font-size: clamp(32px, 5vw, 43px); font-weight: 500; letter-spacing: -1.4px; line-height: 1.08; }
-	h1 em { color: var(--berry); font-style: normal; }
-	.intro-copy { max-width: 540px; margin: 0; color: #706770; font-size: 13px; line-height: 1.6; }
-	.checker-card, .result-card { padding: 22px; background: #fffdfb; border: 1px solid #ebe4e2; border-radius: 15px; box-shadow: 0 8px 24px rgba(58,32,63,.04); }
-	.card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
-	.card-heading h2 { margin: 0 0 3px; color: var(--plum); font-size: 14px; }
-	.card-heading p { margin: 0; color: #8c848b; font-size: 10px; }
-	.local-note { display: inline-flex; align-items: center; gap: 6px; color: #778778; font-size: 9px; white-space: nowrap; }
-	.local-note span { width: 6px; height: 6px; background: #84a289; border-radius: 50%; }
-	textarea { width: 100%; min-height: 150px; padding: 13px 14px; resize: vertical; color: #453e46; background: white; border: 1px solid #e9e1df; border-radius: 9px; font-size: 12px; line-height: 1.65; }
-	textarea::placeholder { color: #a59ca3; }
-	textarea:focus { border-color: #b886a8; outline: none; box-shadow: 0 0 0 3px rgba(184,134,168,.12); }
-	.input-meta { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; color: #978e96; font-size: 9px; }
-	.visually-hidden, .file-input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-	.attachment-preview { display: flex; align-items: center; gap: 12px; margin: 4px 0 12px; padding: 10px; background: #f4f0f3; border-radius: 9px; }
-	.attachment-preview img { width: 80px; height: 100px; flex: 0 0 80px; object-fit: contain; object-position: top; border-radius: 6px; background: white; }
-	.attachment-info { min-width: 0; display: grid; gap: 3px; }
-	.attachment-info strong { overflow: hidden; color: var(--plum); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-	.attachment-info span { color: #7c747d; font-size: 9px; }
-	.remove-attachment { width: 28px; height: 28px; margin-left: auto; color: #766b75; background: transparent; border: 0; border-radius: 50%; font-size: 19px; cursor: pointer; }
-	.ocr-status { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 10px; padding: 9px 11px; color: #655968; background: #f5eff6; border-radius: 8px; font-size: 10px; line-height: 1.5; }
-	.ocr-status-mark { width: 17px; height: 17px; flex: 0 0 17px; display: grid; place-items: center; color: #8b668c; background: #e9dfea; border-radius: 50%; font-size: 11px; font-weight: 700; }
-	.ocr-is-ready { color: #526b56; background: #edf3ed; }
-	.ocr-is-ready .ocr-status-mark { color: #55785c; background: #dce9dd; }
-	.ocr-is-reading .ocr-status-mark { color: var(--berry); animation: breathe 700ms ease-in-out infinite alternate; }
-	.input-error { margin: 9px 0 0; color: #a73b4f; font-size: 11px; }
-	.actions { display: flex; gap: 9px; margin-top: 14px; }
-	.analyze-button, .image-button, .new-analysis { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 14px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; transition: background 150ms ease, transform 150ms ease; }
-	.analyze-button { flex: 1; color: white; background: var(--plum); border: 1px solid var(--plum); }
-	.analyze-button:hover:not(:disabled) { background: #512e58; transform: translateY(-1px); }
-	.analyze-button:disabled { opacity: .8; cursor: wait; }
-	.analyze-button svg, .image-button svg { width: 16px; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-	.button-spinner { width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: spin 700ms linear infinite; }
-	.image-button { color: #655968; background: white; border: 1px solid #ded5dd; }
-	.image-button:hover { background: #f7f2f7; }
-	.examples { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 15px; color: #8f858d; font-size: 9px; }
-	.example-button { padding: 6px 9px; color: #615762; background: #f8f4f4; border: 1px solid #ece5e5; border-radius: 999px; font-size: 9px; cursor: pointer; }
-	.example-button:hover { background: #f3e8ed; border-color: #dfc9d1; }
-	.analysis-loading { display: flex; align-items: center; gap: 9px; margin-top: 14px; padding: 10px 12px; background: #f5eff6; border-radius: 8px; }
-	.loading-mark { color: var(--berry); font-size: 18px; animation: breathe 800ms ease-in-out infinite alternate; }
-	.analysis-loading div { display: grid; gap: 3px; }
-	.analysis-loading strong { color: var(--plum); font-size: 10px; }
-	.analysis-loading div span { color: #807580; font-size: 9px; }
+	.app-shell {
+		--plum: #3a203f;
+		--berry: #b94e64;
+		--guava: #d9707c;
+		--paper: #fbf8f5;
+		--muted: #777078;
+		width: min(100%, 880px);
+		min-height: 100vh;
+		margin: 0 auto;
+		padding: 0 24px 64px;
+	}
+	.app-header {
+		min-height: 74px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin: 0 auto;
+		border-bottom: 1px solid #e9e1df;
+	}
+	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 9px;
+		color: var(--plum);
+		font-size: 15px;
+		letter-spacing: -0.4px;
+		text-decoration: none;
+	}
+	.brand strong {
+		font-weight: 700;
+	}
+	.brand-mark {
+		width: 30px;
+		height: 30px;
+		display: grid;
+		place-items: center;
+	}
+	.brand-mark svg {
+		width: 100%;
+		stroke: var(--berry);
+		stroke-width: 1.8;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	main {
+		margin: 32px 0;
+	}
+	#verificador {
+		scroll-margin-top: 18px;
+	}
+	h1,
+	h2,
+	h3,
+	p {
+		margin-top: 0;
+	}
+	h1 {
+		margin-bottom: 10px;
+		color: var(--plum);
+		font-family: 'Fraunces', Georgia, serif;
+		font-size: clamp(32px, 5vw, 43px);
+		font-weight: 500;
+		letter-spacing: -1.4px;
+		line-height: 1.08;
+	}
+	h1 em {
+		color: var(--berry);
+		font-style: normal;
+	}
+	.intro-copy {
+		max-width: 540px;
+		margin: 0;
+		color: #706770;
+		font-size: 13px;
+		line-height: 1.6;
+	}
+	.checker-card,
+	.result-card {
+		padding: 22px;
+		background: #fffdfb;
+		border: 1px solid #ebe4e2;
+		border-radius: 15px;
+		box-shadow: 0 8px 24px rgba(58, 32, 63, 0.04);
+	}
+	.card-heading {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-bottom: 13px;
+	}
+	.card-heading h2 {
+		margin: 0 0 3px;
+		color: var(--plum);
+		font-size: 14px;
+	}
+	.card-heading p {
+		margin: 0;
+		color: #8c848b;
+		font-size: 10px;
+	}
+	.local-note {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		color: #778778;
+		font-size: 9px;
+		white-space: nowrap;
+	}
+	.local-note span {
+		width: 6px;
+		height: 6px;
+		background: #84a289;
+		border-radius: 50%;
+	}
+	textarea {
+		width: 100%;
+		min-height: 150px;
+		padding: 13px 14px;
+		resize: vertical;
+		color: #453e46;
+		background: white;
+		border: 1px solid #e9e1df;
+		border-radius: 9px;
+		font-size: 12px;
+		line-height: 1.65;
+	}
+	textarea::placeholder {
+		color: #a59ca3;
+	}
+	textarea:focus {
+		border-color: #b886a8;
+		outline: none;
+		box-shadow: 0 0 0 3px rgba(184, 134, 168, 0.12);
+	}
+	.input-meta {
+		display: flex;
+		justify-content: space-between;
+		gap: 10px;
+		margin-top: 6px;
+		color: #978e96;
+		font-size: 9px;
+	}
+	.visually-hidden,
+	.file-input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+	.attachment-preview {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin: 4px 0 12px;
+		padding: 10px;
+		background: #f4f0f3;
+		border-radius: 9px;
+	}
+	.attachment-preview img {
+		width: 80px;
+		height: 100px;
+		flex: 0 0 80px;
+		object-fit: contain;
+		object-position: top;
+		border-radius: 6px;
+		background: white;
+	}
+	.attachment-info {
+		min-width: 0;
+		display: grid;
+		gap: 3px;
+	}
+	.attachment-info strong {
+		overflow: hidden;
+		color: var(--plum);
+		font-size: 10px;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.attachment-info span {
+		color: #7c747d;
+		font-size: 9px;
+	}
+	.remove-attachment {
+		width: 28px;
+		height: 28px;
+		margin-left: auto;
+		color: #766b75;
+		background: transparent;
+		border: 0;
+		border-radius: 50%;
+		font-size: 19px;
+		cursor: pointer;
+	}
+	.ocr-status {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		margin: 0 0 10px;
+		padding: 9px 11px;
+		color: #655968;
+		background: #f5eff6;
+		border-radius: 8px;
+		font-size: 10px;
+		line-height: 1.5;
+	}
+	.ocr-status-mark {
+		width: 17px;
+		height: 17px;
+		flex: 0 0 17px;
+		display: grid;
+		place-items: center;
+		color: #8b668c;
+		background: #e9dfea;
+		border-radius: 50%;
+		font-size: 11px;
+		font-weight: 700;
+	}
+	.ocr-is-ready {
+		color: #526b56;
+		background: #edf3ed;
+	}
+	.ocr-is-ready .ocr-status-mark {
+		color: #55785c;
+		background: #dce9dd;
+	}
+	.ocr-is-reading .ocr-status-mark {
+		color: var(--berry);
+		animation: breathe 700ms ease-in-out infinite alternate;
+	}
+	.input-error {
+		margin: 9px 0 0;
+		color: #a73b4f;
+		font-size: 11px;
+	}
+	.actions {
+		display: flex;
+		gap: 9px;
+		margin-top: 14px;
+	}
+	.analyze-button,
+	.image-button,
+	.new-analysis {
+		min-height: 42px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		padding: 0 14px;
+		border-radius: 8px;
+		font-size: 11px;
+		font-weight: 700;
+		cursor: pointer;
+		transition:
+			background 150ms ease,
+			transform 150ms ease;
+	}
+	.analyze-button {
+		flex: 1;
+		color: white;
+		background: var(--plum);
+		border: 1px solid var(--plum);
+	}
+	.analyze-button:hover:not(:disabled) {
+		background: #512e58;
+		transform: translateY(-1px);
+	}
+	.analyze-button:disabled {
+		opacity: 0.8;
+		cursor: wait;
+	}
+	.analyze-button svg,
+	.image-button svg {
+		width: 16px;
+		stroke: currentColor;
+		stroke-width: 1.8;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	.button-spinner {
+		width: 13px;
+		height: 13px;
+		border: 2px solid rgba(255, 255, 255, 0.4);
+		border-top-color: white;
+		border-radius: 50%;
+		animation: spin 700ms linear infinite;
+	}
+	.image-button {
+		color: #655968;
+		background: white;
+		border: 1px solid #ded5dd;
+	}
+	.image-button:hover {
+		background: #f7f2f7;
+	}
+	.examples {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin-top: 15px;
+		color: #8f858d;
+		font-size: 9px;
+	}
+	.example-button {
+		padding: 6px 9px;
+		color: #615762;
+		background: #f8f4f4;
+		border: 1px solid #ece5e5;
+		border-radius: 999px;
+		font-size: 9px;
+		cursor: pointer;
+	}
+	.example-button:hover {
+		background: #f3e8ed;
+		border-color: #dfc9d1;
+	}
+	.analysis-loading {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		margin-top: 14px;
+		padding: 10px 12px;
+		background: #f5eff6;
+		border-radius: 8px;
+	}
+	.loading-mark {
+		color: var(--berry);
+		font-size: 18px;
+		animation: breathe 800ms ease-in-out infinite alternate;
+	}
+	.analysis-loading div {
+		display: grid;
+		gap: 3px;
+	}
+	.analysis-loading strong {
+		color: var(--plum);
+		font-size: 10px;
+	}
+	.analysis-loading div span {
+		color: #807580;
+		font-size: 9px;
+	}
 
-	.result-card { margin-top: 16px; scroll-margin-top: 20px; }
-	.result-summary { display: flex; align-items: center; gap: 13px; }
-	.score { width: 52px; height: 52px; flex: 0 0 52px; display: flex; align-items: baseline; justify-content: center; padding-top: 12px; color: #587b60; background: #e9f0e8; border-radius: 50%; }
-	.risk-high .score { color: #a43f53; background: #f7e5e8; }
-	.risk-medium .score { color: #896d37; background: #f5efdF; }
-	.score strong { font-family: 'Fraunces', Georgia, serif; font-size: 19px; font-weight: 500; }
-	.score span { margin-left: 1px; font-size: 8px; }
-	.summary-copy { flex: 1; }
-	.risk-label { display: inline-block; margin-bottom: 4px; color: #65836b; font-size: 10px; font-weight: 700; }
-	.risk-high .risk-label { color: #ac4659; }
-	.risk-medium .risk-label { color: #92743e; }
-	.summary-copy h2 { margin: 0; color: var(--plum); font-size: 13px; font-weight: 600; line-height: 1.45; }
-	.new-analysis { min-height: 34px; padding: 0 11px; color: #655968; background: white; border: 1px solid #ded5dd; }
-	.new-analysis:hover { background: #f7f2f7; }
-	.findings { margin-top: 17px; padding-top: 15px; border-top: 1px solid #eee8e6; }
-	.findings h3 { margin-bottom: 11px; color: var(--plum); font-size: 11px; }
-	.findings ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
-	.findings li { display: flex; align-items: flex-start; gap: 9px; }
-	.findings li div { display: grid; gap: 3px; }
-	.findings li strong { color: #4a404a; font-size: 10px; }
-	.findings li div span { color: #7f767f; font-size: 11px; line-height: 1.5; }
-	.finding-mark { width: 19px; height: 19px; flex: 0 0 19px; display: grid; place-items: center; color: #97545d; background: #f6e4e6; border-radius: 50%; font-size: 11px; font-weight: 700; }
-	.mark-caution { color: #8b6b37; background: #f5eedc; }
-	.mark-info { color: #64806a; background: #e6f0e8; }
-	.next-step { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 15px; margin-top: 17px; padding: 15px; border-radius: 10px; }
-	.next-step h3 { margin: 3px 0 5px; color: var(--plum); font-family: 'Fraunces', Georgia, serif; font-size: 18px; font-weight: 500; line-height: 1.2; }
-	.next-step p { margin: 0; color: #706770; font-size: 11px; line-height: 1.55; }
-	.next-kicker { color: #667e69; font-size: 10px; font-weight: 700; }
-	.learning-panel { background: #e9f0e8; }
-	.caution-panel { background: #f5f0e5; }
-	.caution-panel .next-kicker { color: #92743e; }
-	.support-panel { grid-template-columns: 1fr 190px; color: white; background: var(--plum); }
-	.support-panel h3 { color: white; }
-	.support-panel p, .support-panel .next-kicker { color: #e3cbdc; }
-	.support-links { display: grid; gap: 6px; }
-	.support-links a { display: flex; align-items: center; gap: 8px; padding: 7px 9px; color: var(--plum); background: #fffdfb; border-radius: 7px; text-decoration: none; }
-	.support-links a strong { width: 27px; color: var(--berry); font-size: 11px; }
-	.support-links a span { font-size: 10px; }
-	.support-links .urgent-link { justify-content: flex-end; padding: 3px 0; color: #f3d7dc; background: transparent; font-size: 9px; text-decoration: underline; text-underline-offset: 2px; }
-	.job-links { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 11px; border-top: 1px solid rgba(255,255,255,.2); }
-	.job-links > span { margin-right: auto; color: #e3cbdc; font-size: 9px; }
-	.job-links a, .simple-link { color: var(--plum); background: #fffdfb; border-radius: 999px; padding: 7px 10px; font-size: 9px; font-weight: 700; text-decoration: none; }
-	.simple-link { justify-self: end; }
-	.disclaimer { margin: 12px 0 0; color: #8c838b; font-size: 10px; line-height: 1.5; }
-	@keyframes spin { to { transform: rotate(360deg); } }
-	@keyframes breathe { from { opacity: .65; } to { opacity: 1; } }
+	.result-card {
+		margin-top: 16px;
+		scroll-margin-top: 20px;
+	}
+	.result-summary {
+		display: flex;
+		align-items: center;
+		gap: 13px;
+	}
+	.score {
+		width: 52px;
+		height: 52px;
+		flex: 0 0 52px;
+		display: flex;
+		align-items: baseline;
+		justify-content: center;
+		padding-top: 12px;
+		color: #587b60;
+		background: #e9f0e8;
+		border-radius: 50%;
+	}
+	.risk-high .score {
+		color: #a43f53;
+		background: #f7e5e8;
+	}
+	.risk-medium .score {
+		color: #896d37;
+		background: #f5efdf;
+	}
+	.score strong {
+		font-family: 'Fraunces', Georgia, serif;
+		font-size: 19px;
+		font-weight: 500;
+	}
+	.score span {
+		margin-left: 1px;
+		font-size: 8px;
+	}
+	.summary-copy {
+		flex: 1;
+	}
+	.risk-label {
+		display: inline-block;
+		margin-bottom: 4px;
+		color: #65836b;
+		font-size: 10px;
+		font-weight: 700;
+	}
+	.risk-high .risk-label {
+		color: #ac4659;
+	}
+	.risk-medium .risk-label {
+		color: #92743e;
+	}
+	.summary-copy h2 {
+		margin: 0;
+		color: var(--plum);
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 1.45;
+	}
+	.new-analysis {
+		min-height: 34px;
+		padding: 0 11px;
+		color: #655968;
+		background: white;
+		border: 1px solid #ded5dd;
+	}
+	.new-analysis:hover {
+		background: #f7f2f7;
+	}
+	.findings {
+		margin-top: 17px;
+		padding-top: 15px;
+		border-top: 1px solid #eee8e6;
+	}
+	.findings h3 {
+		margin-bottom: 11px;
+		color: var(--plum);
+		font-size: 11px;
+	}
+	.findings ul {
+		display: grid;
+		gap: 10px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.findings li {
+		display: flex;
+		align-items: flex-start;
+		gap: 9px;
+	}
+	.findings li div {
+		display: grid;
+		gap: 3px;
+	}
+	.findings li strong {
+		color: #4a404a;
+		font-size: 10px;
+	}
+	.findings li div span {
+		color: #7f767f;
+		font-size: 11px;
+		line-height: 1.5;
+	}
+	.finding-mark {
+		width: 19px;
+		height: 19px;
+		flex: 0 0 19px;
+		display: grid;
+		place-items: center;
+		color: #97545d;
+		background: #f6e4e6;
+		border-radius: 50%;
+		font-size: 11px;
+		font-weight: 700;
+	}
+	.mark-caution {
+		color: #8b6b37;
+		background: #f5eedc;
+	}
+	.mark-info {
+		color: #64806a;
+		background: #e6f0e8;
+	}
+	.scale {
+		margin-top: 14px;
+	}
+	.scale-track {
+		position: relative;
+		height: 6px;
+		border-radius: 999px;
+		background: linear-gradient(90deg, #cfe0d1 0 33.3%, #ecdcb5 33.3% 66.6%, #eec3cb 66.6% 100%);
+	}
+	.scale-marker {
+		position: absolute;
+		top: 50%;
+		width: 14px;
+		height: 14px;
+		border: 3px solid var(--plum);
+		border-radius: 50%;
+		background: #fffdfb;
+		transform: translate(-50%, -50%);
+	}
+	.scale-labels {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		margin-top: 5px;
+		color: #8c838b;
+		font-size: 9px;
+		text-align: center;
+	}
+	.breakdown {
+		margin: 12px 0 0;
+		color: #706770;
+		font-size: 10px;
+	}
+	.breakdown strong {
+		color: var(--plum);
+	}
+	.escalations {
+		margin: 8px 0 0;
+		padding: 9px 11px 9px 26px;
+		color: #8f3346;
+		background: #f9eaec;
+		border-radius: 8px;
+		font-size: 10px;
+		line-height: 1.5;
+	}
+	.findings li div .weight {
+		margin-left: 4px;
+		padding: 1px 5px;
+		color: #6b5f6b;
+		background: #f1ecf0;
+		border-radius: 999px;
+		font-size: 9px;
+		font-weight: 600;
+	}
+	.findings li div .critical-tag {
+		margin-left: 4px;
+		padding: 1px 6px;
+		color: white;
+		background: #a43f53;
+		border-radius: 999px;
+		font-size: 9px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.3px;
+	}
+	.evidence {
+		display: block;
+		margin-top: 3px;
+		padding: 6px 9px;
+		color: #5e555e;
+		background: #faf6f4;
+		border-left: 2px solid #dcc9cf;
+		border-radius: 0 6px 6px 0;
+		font-size: 11px;
+		font-style: normal;
+		line-height: 1.5;
+		quotes: none;
+	}
+	.evidence mark {
+		padding: 0 2px;
+		color: #7d2c3d;
+		background: #f6dce1;
+		border-radius: 3px;
+	}
+	.note {
+		color: #8a7f89;
+		font-size: 10px;
+		line-height: 1.45;
+	}
+	.empty-findings {
+		margin: 0;
+		color: #7f767f;
+		font-size: 11px;
+	}
+	.review h3 span {
+		color: #978e96;
+		font-weight: 400;
+	}
+	.review .evidence mark {
+		color: #5f5a3c;
+		background: #efe8cf;
+	}
+	.next-step {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		align-items: center;
+		gap: 15px;
+		margin-top: 17px;
+		padding: 15px;
+		border-radius: 10px;
+	}
+	.next-step h3 {
+		margin: 3px 0 5px;
+		color: var(--plum);
+		font-family: 'Fraunces', Georgia, serif;
+		font-size: 18px;
+		font-weight: 500;
+		line-height: 1.2;
+	}
+	.next-step p {
+		margin: 0;
+		color: #706770;
+		font-size: 11px;
+		line-height: 1.55;
+	}
+	.next-kicker {
+		color: #667e69;
+		font-size: 10px;
+		font-weight: 700;
+	}
+	.learning-panel {
+		background: #e9f0e8;
+	}
+	.caution-panel {
+		background: #f5f0e5;
+	}
+	.caution-panel .next-kicker {
+		color: #92743e;
+	}
+	.support-panel {
+		grid-template-columns: 1fr 190px;
+		color: white;
+		background: var(--plum);
+	}
+	.support-panel h3 {
+		color: white;
+	}
+	.support-panel p,
+	.support-panel .next-kicker {
+		color: #e3cbdc;
+	}
+	.support-links {
+		display: grid;
+		gap: 6px;
+	}
+	.support-links a {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 7px 9px;
+		color: var(--plum);
+		background: #fffdfb;
+		border-radius: 7px;
+		text-decoration: none;
+	}
+	.support-links a strong {
+		width: 27px;
+		color: var(--berry);
+		font-size: 11px;
+	}
+	.support-links a span {
+		font-size: 10px;
+	}
+	.support-links .urgent-link {
+		justify-content: flex-end;
+		padding: 3px 0;
+		color: #f3d7dc;
+		background: transparent;
+		font-size: 9px;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+	.job-links {
+		grid-column: 1 / -1;
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 8px;
+		padding-top: 11px;
+		border-top: 1px solid rgba(255, 255, 255, 0.2);
+	}
+	.job-links > span {
+		margin-right: auto;
+		color: #e3cbdc;
+		font-size: 9px;
+	}
+	.job-links a,
+	.simple-link {
+		color: var(--plum);
+		background: #fffdfb;
+		border-radius: 999px;
+		padding: 7px 10px;
+		font-size: 9px;
+		font-weight: 700;
+		text-decoration: none;
+	}
+	.simple-link {
+		justify-self: end;
+	}
+	.disclaimer {
+		margin: 12px 0 0;
+		color: #8c838b;
+		font-size: 10px;
+		line-height: 1.5;
+	}
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+	@keyframes breathe {
+		from {
+			opacity: 0.65;
+		}
+		to {
+			opacity: 1;
+		}
+	}
 
 	@media (max-width: 600px) {
-		.app-shell { padding: 0 16px 36px; }
-		.app-header { min-height: 64px; }
-		.brand { font-size: 13px; }
-		.brand-mark { width: 27px; height: 27px; }
-		.ods-badge { gap: 6px; padding-right: 8px; font-size: 8px; }
-		.ods-badge img { width: 24px; height: 24px; }
-		main { margin-top: 32px; }
-		h1 { font-size: 36px; }
-		.intro-copy { font-size: 12px; }
-		.checker-card, .result-card { padding: 16px; border-radius: 12px; }
-		.local-note { font-size: 0; }
-		.local-note span { width: 7px; height: 7px; }
-		textarea { min-height: 140px; font-size: 11px; }
-		.actions { flex-wrap: wrap; }
-		.analyze-button { min-width: 100%; }
-		.image-button { flex: 1; }
-		.result-summary { align-items: flex-start; flex-wrap: wrap; }
-		.summary-copy { min-width: calc(100% - 75px); }
-		.new-analysis { margin-left: auto; }
-		.next-step, .support-panel { grid-template-columns: 1fr; }
-		.support-links { grid-template-columns: 1fr 1fr; }
-		.support-links .urgent-link { grid-column: 1 / -1; }
-		.job-links { grid-column: 1; }
-		.job-links > span { width: 100%; }
-		.simple-link { justify-self: start; }
+		.app-shell {
+			padding: 0 16px 36px;
+		}
+		.app-header {
+			min-height: 64px;
+		}
+		.brand {
+			font-size: 13px;
+		}
+		.brand-mark {
+			width: 27px;
+			height: 27px;
+		}
+		.ods-badge {
+			gap: 6px;
+			padding-right: 8px;
+			font-size: 8px;
+		}
+		.ods-badge img {
+			width: 24px;
+			height: 24px;
+		}
+		main {
+			margin-top: 32px;
+		}
+		h1 {
+			font-size: 36px;
+		}
+		.intro-copy {
+			font-size: 12px;
+		}
+		.checker-card,
+		.result-card {
+			padding: 16px;
+			border-radius: 12px;
+		}
+		.local-note {
+			font-size: 0;
+		}
+		.local-note span {
+			width: 7px;
+			height: 7px;
+		}
+		textarea {
+			min-height: 140px;
+			font-size: 11px;
+		}
+		.actions {
+			flex-wrap: wrap;
+		}
+		.analyze-button {
+			min-width: 100%;
+		}
+		.image-button {
+			flex: 1;
+		}
+		.result-summary {
+			align-items: flex-start;
+			flex-wrap: wrap;
+		}
+		.summary-copy {
+			min-width: calc(100% - 75px);
+		}
+		.new-analysis {
+			margin-left: auto;
+		}
+		.next-step,
+		.support-panel {
+			grid-template-columns: 1fr;
+		}
+		.support-links {
+			grid-template-columns: 1fr 1fr;
+		}
+		.support-links .urgent-link {
+			grid-column: 1 / -1;
+		}
+		.job-links {
+			grid-column: 1;
+		}
+		.job-links > span {
+			width: 100%;
+		}
+		.simple-link {
+			justify-self: start;
+		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		:global(html) { scroll-behavior: auto; }
-		:global(*), :global(*::before), :global(*::after) { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+		:global(html) {
+			scroll-behavior: auto;
+		}
+		:global(*),
+		:global(*::before),
+		:global(*::after) {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+		}
 	}
 </style>
