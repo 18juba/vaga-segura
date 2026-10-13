@@ -36,8 +36,6 @@
 		result && result.level !== 'baixo' ? partnerVacanciesFor(result.role) : []
 	);
 	let showHelpPrompt = $state(false);
-	let ocrTimer: number | undefined;
-	let fileInput: HTMLInputElement;
 
 	onMount(() => {
 		let promptTimeout = 0;
