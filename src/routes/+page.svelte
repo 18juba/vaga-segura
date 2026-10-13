@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { analyzeVacancy, type Analysis } from '#lib/vaga/index.ts';
+	import { partnerVacanciesFor } from '#lib/vaga/partners.ts';
 
 	const examples = [
 		{
@@ -21,14 +22,25 @@
 	let imageUrl = $state('');
 	let ocrState = $state<'idle' | 'reading' | 'ready'>('idle');
 	let selectedHelpline = $state<'180' | '100'>('180');
+	let showPartners = $state(false);
 	let ocrTimer: number | undefined;
 	let fileInput: HTMLInputElement;
+
+	const detectedRoleTerm = $derived.by(() => {
+		if (!result) return '';
+		const role = result.facts.roles[0];
+		return role ? jobText.slice(role.start, role.end).trim() : result.role;
+	});
+	const partnerRecommendations = $derived(
+		result && result.level !== 'baixo' ? partnerVacanciesFor(result.role) : []
+	);
 
 	function useExample(text: string) {
 		removeImage();
 		ocrState = 'idle';
 		jobText = text;
 		result = null;
+		showPartners = false;
 		errorMessage = '';
 	}
 
@@ -48,6 +60,7 @@
 		imageUrl = url;
 		imageName = name;
 		result = null;
+		showPartners = false;
 		errorMessage = '';
 		beginMockOcr();
 	}
@@ -89,6 +102,7 @@
 		analyzing = true;
 		window.setTimeout(() => {
 			result = analyzeVacancy(jobText);
+			showPartners = false;
 			analyzing = false;
 			window.setTimeout(() => {
 				document.getElementById('analise-resultado')?.scrollIntoView({
@@ -107,6 +121,7 @@
 	function startOver() {
 		jobText = '';
 		result = null;
+		showPartners = false;
 		errorMessage = '';
 		removeImage();
 		ocrState = 'idle';
@@ -219,6 +234,7 @@
 				readonly={ocrState === 'reading'}
 				oninput={() => {
 					result = null;
+					showPartners = false;
 					errorMessage = '';
 				}}></textarea>
 			<div class="input-meta" id="input-help">
@@ -439,6 +455,54 @@
 						>
 					</div>
 				{/if}
+				{#if result.level !== 'baixo'}
+					<div class="partner-recs">
+						<button
+							class="partner-recs-toggle"
+							type="button"
+							aria-expanded={showPartners}
+							aria-controls="partner-recs-panel"
+							onclick={() => (showPartners = !showPartners)}
+						>
+							<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+								<circle cx="10.8" cy="10.8" r="7.4" />
+								<path d="m16.2 16.2 4.3 4.3M8 11.1l1.9 1.9 4-4.1" />
+							</svg>
+							{showPartners
+								? 'Ocultar vagas de parceiros'
+								: 'Reconhecer função e ver vagas de parceiros'}
+						</button>
+						{#if showPartners}
+							<div
+								class="partner-recs-panel"
+								id="partner-recs-panel"
+								role="region"
+								aria-label="Vagas de empresas parceiras"
+							>
+								<p class="partner-recs-role">
+									{#if detectedRoleTerm}
+										Função reconhecida: <strong>{detectedRoleTerm}</strong>
+									{:else}
+										Não identificamos uma função específica neste texto. Veja vagas de empresas
+										parceiras abaixo.
+									{/if}
+								</p>
+								<ul>
+									{#each partnerRecommendations as v (v.id)}
+										<li>
+											<div class="partner-vacancy-heading">
+												<strong>{v.title}</strong>
+												<span class="verified-tag">✓ Verificado</span>
+											</div>
+											<span class="partner-company">{v.company}</span>
+											<span class="partner-meta">{v.location} · {v.modality} · {v.salary}</span>
+										</li>
+									{/each}
+								</ul>
+							</div>
+						{/if}
+					</div>
+				{/if}
 				<p class="disclaimer">
 					Resultado indicativo, calculado pelos critérios da base de sinais Vaga Certa. Não confirma
 					se a vaga é legítima ou fraudulenta.
@@ -446,7 +510,11 @@
 			</section>
 		{/if}
 
-		<section class="helpline-section" id="canais-de-apoio" aria-label="Canais de orientação e denúncia">
+		<section
+			class="helpline-section"
+			id="canais-de-apoio"
+			aria-label="Canais de orientação e denúncia"
+		>
 			<div
 				class="helpline-tabs"
 				role="tablist"
@@ -536,7 +604,9 @@
 								rel="noreferrer">Conversar pelo WhatsApp</a
 							>
 							<p class="helpline-emergency">
-								Se houver perigo imediato ou uma agressão estiver acontecendo, ligue <a href="tel:190">190</a>.
+								Se houver perigo imediato ou uma agressão estiver acontecendo, ligue <a
+									href="tel:190">190</a
+								>.
 							</p>
 						</div>
 					</div>
@@ -555,7 +625,8 @@
 							<p class="helpline-kicker">Denúncias de violações de direitos</p>
 							<h2 id="helpline-title-100">O Disque 100 recebe relatos e denúncias.</h2>
 							<p>
-								Você pode relatar uma violação de direitos humanos vivida por você ou por outra pessoa.
+								Você pode relatar uma violação de direitos humanos vivida por você ou por outra
+								pessoa.
 							</p>
 						</div>
 						<a class="helpline-number" href="tel:100" aria-label="Ligar para o Disque 100">
@@ -579,7 +650,9 @@
 					<div class="helpline-details">
 						<div class="helpline-how">
 							<h3>Você pode ligar mesmo sem ser a vítima</h3>
-							<p>O atendimento é gratuito, funciona 24 horas e recebe relatos de qualquer pessoa.</p>
+							<p>
+								O atendimento é gratuito, funciona 24 horas e recebe relatos de qualquer pessoa.
+							</p>
 						</div>
 						<div class="helpline-actions">
 							<a
@@ -1308,6 +1381,90 @@
 	}
 	.simple-link {
 		justify-self: end;
+	}
+	.partner-recs {
+		margin-top: 14px;
+	}
+	.partner-recs-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 10px 14px;
+		color: var(--plum);
+		background: #f3ecf4;
+		border: 1px solid #e0d2e2;
+		border-radius: 8px;
+		font-size: 11px;
+		font-weight: 700;
+		cursor: pointer;
+		transition: background 150ms ease;
+	}
+	.partner-recs-toggle:hover {
+		background: #ece0ee;
+	}
+	.partner-recs-toggle svg {
+		width: 15px;
+		stroke: currentColor;
+		stroke-width: 1.8;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	.partner-recs-panel {
+		margin-top: 10px;
+		padding: 14px;
+		background: #faf7fb;
+		border: 1px solid #e9e1e9;
+		border-radius: 10px;
+	}
+	.partner-recs-role {
+		margin: 0 0 10px;
+		color: #5a5160;
+		font-size: 11px;
+	}
+	.partner-recs-role strong {
+		color: var(--plum);
+	}
+	.partner-recs-panel ul {
+		display: grid;
+		gap: 8px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.partner-recs-panel li {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		padding: 10px 12px;
+		background: white;
+		border: 1px solid #ece4ec;
+		border-radius: 8px;
+	}
+	.partner-vacancy-heading {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.partner-vacancy-heading strong {
+		color: var(--plum);
+		font-size: 11px;
+	}
+	.verified-tag {
+		padding: 1px 6px;
+		color: #3f6b45;
+		background: #e9f0e8;
+		border-radius: 999px;
+		font-size: 9px;
+		font-weight: 700;
+	}
+	.partner-company {
+		color: #5a5160;
+		font-size: 10px;
+		font-weight: 600;
+	}
+	.partner-meta {
+		color: #807680;
+		font-size: 10px;
 	}
 	.disclaimer {
 		margin: 12px 0 0;
