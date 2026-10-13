@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { analyzeVacancy, type Analysis } from '#lib/vaga/index.ts';
 	import { partnerVacanciesFor } from '#lib/vaga/partners.ts';
 
@@ -34,6 +35,28 @@
 	const partnerRecommendations = $derived(
 		result && result.level !== 'baixo' ? partnerVacanciesFor(result.role) : []
 	);
+	let showHelpPrompt = $state(false);
+	let ocrTimer: number | undefined;
+	let fileInput: HTMLInputElement;
+
+	onMount(() => {
+		let promptTimeout = 0;
+		let dismissTimeout = 0;
+
+		const showPrompt = () => {
+			showHelpPrompt = true;
+			dismissTimeout = window.setTimeout(() => {
+				showHelpPrompt = false;
+				promptTimeout = window.setTimeout(showPrompt, 48_000);
+			}, 5_000);
+		};
+
+		promptTimeout = window.setTimeout(showPrompt, 8_000);
+		return () => {
+			window.clearTimeout(promptTimeout);
+			window.clearTimeout(dismissTimeout);
+		};
+	});
 
 	function useExample(text: string) {
 		removeImage();
@@ -147,7 +170,7 @@
 </script>
 
 <svelte:head>
-	<title>esp.ia | Espião de Propostas</title>
+	<title>Esp.IA | Espião de Propostas</title>
 	<meta name="description" content="Confira sinais de alerta em uma oferta de trabalho." />
 	<meta name="theme-color" content="#fbf8f5" />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -161,9 +184,9 @@
 <div class="app-shell">
 	<header class="app-header">
 		<a class="brand" href="#verificador" aria-label="Vaga Segura">
-			<span><strong>esp.ia</strong></span>
+			<span class="text-lg sm:text-xl"><strong>Esp.IA</strong></span>
 		</a>
-		<div class="size-14 rounded-lg">
+		<div class="size-12 sm:size-14 rounded-lg">
 			<img src="/images/ods5.png" alt="" aria-hidden="true" class="rounded-lg" />
 		</div>
 	</header>
@@ -504,7 +527,7 @@
 					</div>
 				{/if}
 				<p class="disclaimer">
-					Resultado indicativo, calculado pelos critérios da base de sinais Vaga Certa. Não confirma
+					Resultado indicativo. Não confirma
 					se a vaga é legítima ou fraudulenta.
 				</p>
 			</section>
@@ -669,6 +692,17 @@
 			</div>
 		</section>
 	</main>
+	<a
+		class="whatsapp-fab"
+		href="https://wa.me/556196100180"
+		target="_blank"
+		rel="noopener noreferrer"
+		aria-label="Maria, precisa de ajuda? Abrir o WhatsApp da Central de Atendimento à Mulher, Ligue 180"
+		title="WhatsApp da Central de Atendimento à Mulher"
+	>
+		<span class="maria-prompt" class:visible={showHelpPrompt} aria-hidden="true">Precisa de ajuda?</span>
+		<img src="/images/maria.png" alt="" aria-hidden="true" />
+	</a>
 </div>
 
 <style>
@@ -708,6 +742,75 @@
 		min-height: 100vh;
 		margin: 0 auto;
 		padding: 0 24px 64px;
+	}
+	.whatsapp-fab {
+		position: fixed;
+		right: max(16px, calc((100vw - 880px) / 2 + 24px));
+		bottom: max(18px, env(safe-area-inset-bottom));
+		z-index: 30;
+		display: block;
+		width: 56px;
+		height: 56px;
+		padding: 0;
+		background: white;
+		border: 2px solid #20c76a;
+		border-radius: 50%;
+		box-shadow: 0 8px 24px rgba(22, 71, 42, 0.28);
+		text-decoration: none;
+		transition: transform 150ms ease;
+	}
+	.whatsapp-fab:hover {
+		transform: translateY(-2px);
+	}
+	.whatsapp-fab img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		border-radius: 50%;
+		object-fit: cover;
+		object-position: center 32%;
+	}
+	.maria-prompt {
+		position: absolute;
+		top: 50%;
+		right: calc(100% + 10px);
+		padding: 9px 12px;
+		color: var(--plum);
+		background: #fffaf8;
+		border: 1px solid #eadfe9;
+		border-radius: 12px;
+		box-shadow: 0 5px 18px rgba(39, 24, 43, 0.16);
+		font-size: 12px;
+		font-weight: 700;
+		line-height: 1.2;
+		white-space: nowrap;
+		opacity: 0;
+		visibility: hidden;
+		transform: translate(6px, -50%);
+		transition:
+			opacity 180ms ease,
+			transform 180ms ease,
+			visibility 180ms ease;
+		pointer-events: none;
+	}
+	.maria-prompt::after {
+		position: absolute;
+		top: 50%;
+		right: -5px;
+		width: 9px;
+		height: 9px;
+		background: #fffaf8;
+		border-top: 1px solid #eadfe9;
+		border-right: 1px solid #eadfe9;
+		content: '';
+		transform: translateY(-50%) rotate(45deg);
+	}
+	.maria-prompt.visible,
+	.whatsapp-fab:hover .maria-prompt,
+	.whatsapp-fab:focus-visible .maria-prompt {
+		opacity: 1;
+		visibility: visible;
+		transform: translate(0, -50%);
 	}
 	.app-header {
 		min-height: 74px;
