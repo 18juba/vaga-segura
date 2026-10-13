@@ -20,6 +20,7 @@
 	let imageName = $state('');
 	let imageUrl = $state('');
 	let ocrState = $state<'idle' | 'reading' | 'ready'>('idle');
+	let selectedHelpline = $state<'180' | '100'>('180');
 	let ocrTimer: number | undefined;
 	let fileInput: HTMLInputElement;
 
@@ -114,6 +115,19 @@
 			: 'smooth';
 		document.getElementById('verificador')?.scrollIntoView({ behavior, block: 'center' });
 		document.getElementById('job-text')?.focus({ preventScroll: true });
+	}
+
+	function handleHelplineTabKeydown(event: KeyboardEvent) {
+		let nextTab: '180' | '100' | undefined;
+		if (event.key === 'ArrowRight') nextTab = selectedHelpline === '180' ? '100' : '180';
+		if (event.key === 'ArrowLeft') nextTab = selectedHelpline === '100' ? '180' : '100';
+		if (event.key === 'Home') nextTab = '180';
+		if (event.key === 'End') nextTab = '100';
+		if (!nextTab) return;
+
+		event.preventDefault();
+		selectedHelpline = nextTab;
+		requestAnimationFrame(() => document.getElementById(`helpline-tab-${nextTab}`)?.focus());
 	}
 </script>
 
@@ -385,7 +399,7 @@
 							<p>{result.action} Guarde as mensagens e converse com alguém de confiança.</p>
 						</div>
 						<div class="support-links">
-							<a href="tel:180"><strong>180</strong><span>Ligue 180 · orientação e apoio</span></a>
+							<a href="tel:180"><strong>180</strong><span>Disque 180 · orientação e apoio</span></a>
 							<a href="tel:100"><strong>100</strong><span>Disque 100 · denúncias</span></a>
 							<a class="urgent-link" href="tel:190">Em perigo imediato? Ligue 190</a>
 						</div>
@@ -432,62 +446,153 @@
 			</section>
 		{/if}
 
-		<section class="helpline-section" id="disque-180" aria-labelledby="helpline-title">
-			<div class="helpline-intro">
-				<div class="helpline-copy">
-					<p class="helpline-kicker">Apoio e informação</p>
-					<h2 id="helpline-title">Você pode buscar orientação pelo Ligue 180.</h2>
-					<p>
-						A Central orienta sobre direitos e serviços de atendimento à mulher. Você pode ligar
-						para tirar dúvidas ou pedir ajuda para encontrar um serviço perto de você.
-					</p>
-				</div>
-				<a class="helpline-number" href="tel:180" aria-label="Ligar para o Ligue 180">
-					<span>Disque</span>
-					<strong>180</strong>
-					<span>gratuito · 24 horas</span>
-				</a>
+		<section class="helpline-section" id="canais-de-apoio" aria-label="Canais de orientação e denúncia">
+			<div
+				class="helpline-tabs"
+				role="tablist"
+				aria-label="Escolha um canal"
+				tabindex="-1"
+				onkeydown={handleHelplineTabKeydown}
+			>
+				<button
+					id="helpline-tab-180"
+					class="helpline-tab"
+					class:active={selectedHelpline === '180'}
+					role="tab"
+					aria-selected={selectedHelpline === '180'}
+					aria-controls="helpline-panel-180"
+					tabindex={selectedHelpline === '180' ? 0 : -1}
+					onclick={() => (selectedHelpline = '180')}>Disque 180</button
+				>
+				<button
+					id="helpline-tab-100"
+					class="helpline-tab"
+					class:active={selectedHelpline === '100'}
+					role="tab"
+					aria-selected={selectedHelpline === '100'}
+					aria-controls="helpline-panel-100"
+					tabindex={selectedHelpline === '100' ? 0 : -1}
+					onclick={() => (selectedHelpline = '100')}>Disque 100</button
+				>
 			</div>
 
-			<div class="helpline-video">
-				<iframe
-					src="https://www.youtube-nocookie.com/embed/y9ysRfE4rPk?rel=0"
-					title="Vídeo sobre a Central de Atendimento à Mulher Ligue 180"
-					loading="lazy"
-					referrerpolicy="strict-origin-when-cross-origin"
-					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-					allowfullscreen
-				></iframe>
-			</div>
+			<div
+				class="helpline-panel"
+				id="helpline-panel-180"
+				role="tabpanel"
+				aria-labelledby="helpline-tab-180"
+				hidden={selectedHelpline !== '180'}
+			>
+				{#if selectedHelpline === '180'}
+					<div class="helpline-intro">
+						<div class="helpline-copy">
+							<p class="helpline-kicker">Apoio e informação</p>
+							<h2 id="helpline-title-180">Você pode buscar orientação pelo Ligue 180.</h2>
+							<p>
+								A Central orienta sobre direitos e serviços de atendimento à mulher. Você pode ligar
+								para tirar dúvidas ou pedir ajuda para encontrar um serviço perto de você.
+							</p>
+						</div>
+						<a class="helpline-number" href="tel:180" aria-label="Ligar para o Ligue 180">
+							<span>Disque</span>
+							<strong>180</strong>
+							<span>gratuito · 24 horas</span>
+						</a>
+					</div>
 
-			<div class="helpline-details">
-				<div class="helpline-how">
-					<h3>Como ligar</h3>
-					<ol>
-						<li>Abra o aplicativo Telefone do celular ou use um telefone fixo.</li>
-						<li>Digite <strong>180</strong> e toque no botão para ligar.</li>
-						<li>Peça orientação, tire dúvidas ou conte o que está acontecendo.</li>
-					</ol>
-					<p>Você também pode ligar para buscar orientação para outra mulher.</p>
-				</div>
-				<div class="helpline-actions">
-					<a
-						class="helpline-primary"
-						href="https://www.gov.br/mulheres/pt-br/ligue180"
-						target="_blank"
-						rel="noreferrer">Conheça a Central e os serviços disponíveis</a
-					>
-					<a class="helpline-secondary" href="tel:180">Ligar para 180</a>
-					<a
-						class="helpline-secondary"
-						href="https://wa.me/556196100180"
-						target="_blank"
-						rel="noreferrer">Conversar pelo WhatsApp</a
-					>
-					<p class="helpline-emergency">
-						Se houver perigo imediato ou uma agressão estiver acontecendo, ligue <a href="tel:190">190</a>.
-					</p>
-				</div>
+					<div class="helpline-video">
+						<iframe
+							src="https://www.youtube-nocookie.com/embed/y9ysRfE4rPk?rel=0"
+							title="Vídeo sobre a Central de Atendimento à Mulher Ligue 180"
+							loading="lazy"
+							referrerpolicy="strict-origin-when-cross-origin"
+							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+							allowfullscreen
+						></iframe>
+					</div>
+
+					<div class="helpline-details">
+						<div class="helpline-how">
+							<h3>Como ligar</h3>
+							<ol>
+								<li>Abra o aplicativo Telefone do celular ou use um telefone fixo.</li>
+								<li>Digite <strong>180</strong> e toque no botão para ligar.</li>
+								<li>Peça orientação, tire dúvidas ou conte o que está acontecendo.</li>
+							</ol>
+							<p>Você também pode ligar para buscar orientação para outra mulher.</p>
+						</div>
+						<div class="helpline-actions">
+							<a
+								class="helpline-primary"
+								href="https://www.gov.br/mulheres/pt-br/ligue180"
+								target="_blank"
+								rel="noreferrer">Conheça a Central e os serviços disponíveis</a
+							>
+							<a class="helpline-secondary" href="tel:180">Ligar para 180</a>
+							<a
+								class="helpline-secondary"
+								href="https://wa.me/556196100180"
+								target="_blank"
+								rel="noreferrer">Conversar pelo WhatsApp</a
+							>
+							<p class="helpline-emergency">
+								Se houver perigo imediato ou uma agressão estiver acontecendo, ligue <a href="tel:190">190</a>.
+							</p>
+						</div>
+					</div>
+				{/if}
+			</div>
+			<div
+				class="helpline-panel"
+				id="helpline-panel-100"
+				role="tabpanel"
+				aria-labelledby="helpline-tab-100"
+				hidden={selectedHelpline !== '100'}
+			>
+				{#if selectedHelpline === '100'}
+					<div class="helpline-intro">
+						<div class="helpline-copy">
+							<p class="helpline-kicker">Denúncias de violações de direitos</p>
+							<h2 id="helpline-title-100">O Disque 100 recebe relatos e denúncias.</h2>
+							<p>
+								Você pode relatar uma violação de direitos humanos vivida por você ou por outra pessoa.
+							</p>
+						</div>
+						<a class="helpline-number" href="tel:100" aria-label="Ligar para o Disque 100">
+							<span>Disque</span>
+							<strong>100</strong>
+							<span>gratuito · 24 horas</span>
+						</a>
+					</div>
+
+					<div class="helpline-video">
+						<iframe
+							src="https://www.youtube-nocookie.com/embed/ucWMs-gRLaY?rel=0"
+							title="Vídeo sobre o Disque Direitos Humanos 100"
+							loading="lazy"
+							referrerpolicy="strict-origin-when-cross-origin"
+							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+							allowfullscreen
+						></iframe>
+					</div>
+
+					<div class="helpline-details">
+						<div class="helpline-how">
+							<h3>Você pode ligar mesmo sem ser a vítima</h3>
+							<p>O atendimento é gratuito, funciona 24 horas e recebe relatos de qualquer pessoa.</p>
+						</div>
+						<div class="helpline-actions">
+							<a
+								class="helpline-primary"
+								href="https://www.gov.br/pt-br/servicos/denunciar-violacao-de-direitos-humanos"
+								target="_blank"
+								rel="noreferrer">Saiba como fazer uma denúncia</a
+							>
+							<a class="helpline-secondary" href="tel:100">Ligar para 100</a>
+							<p class="helpline-emergency">Em perigo imediato, ligue <a href="tel:190">190</a>.</p>
+						</div>
+					</div>
+				{/if}
 			</div>
 		</section>
 	</main>
@@ -1217,6 +1322,35 @@
 		background: var(--plum);
 		border-radius: 16px;
 	}
+	.helpline-tabs {
+		display: flex;
+		width: fit-content;
+		gap: 4px;
+		margin-bottom: 20px;
+		padding: 4px;
+		background: rgba(255, 255, 255, 0.1);
+		border-radius: 11px;
+	}
+	.helpline-tab {
+		min-height: 36px;
+		padding: 8px 16px;
+		color: #f1e9f0;
+		background: transparent;
+		border: 0;
+		border-radius: 8px;
+		font: inherit;
+		font-size: 11px;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.helpline-tab[aria-selected='true'] {
+		color: var(--plum);
+		background: #fffaf8;
+	}
+	.helpline-tab:focus-visible {
+		outline: 2px solid #f0b9c2;
+		outline-offset: 2px;
+	}
 	.helpline-intro {
 		display: flex;
 		align-items: flex-start;
@@ -1437,6 +1571,12 @@
 		.helpline-section {
 			padding: 17px;
 			border-radius: 12px;
+		}
+		.helpline-tabs {
+			width: 100%;
+		}
+		.helpline-tab {
+			flex: 1;
 		}
 		.helpline-intro {
 			flex-direction: column;
