@@ -148,7 +148,7 @@
 		<a class="brand" href="#verificador" aria-label="Vaga Segura">
 			<span><strong>esp.ia</strong></span>
 		</a>
-		<div class="size-14 rounded-lg">
+		<div class="size-12 sm:size-14 rounded-lg">
 			<img src="/images/ods5.png" alt="" aria-hidden="true" class="rounded-lg" />
 		</div>
 	</header>
@@ -440,7 +440,7 @@
 					</div>
 				{/if}
 				<p class="disclaimer">
-					Resultado indicativo, calculado pelos critérios da base de sinais Vaga Certa. Não confirma
+					Resultado indicativo. Não confirma
 					se a vaga é legítima ou fraudulenta.
 				</p>
 			</section>
@@ -596,6 +596,21 @@
 			</div>
 		</section>
 	</main>
+	<a
+		class="whatsapp-fab"
+		href="https://wa.me/556196100180"
+		target="_blank"
+		rel="noopener noreferrer"
+		aria-label="Abrir o WhatsApp da Central de Atendimento à Mulher, Ligue 180"
+		title="WhatsApp da Central de Atendimento à Mulher"
+	>
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path
+				d="M20.52 3.48A11.83 11.83 0 0 0 12.11 0C5.56 0 .23 5.33.23 11.89c0 2.09.55 4.13 1.6 5.93L.12 24l6.34-1.66a11.88 11.88 0 0 0 5.65 1.43h.01c6.55 0 11.88-5.33 11.88-11.89 0-3.18-1.24-6.17-3.48-8.4zM12.11 21.74c-1.77 0-3.51-.48-5.02-1.39l-.36-.21-3.76.99 1-3.67-.23-.38a9.82 9.82 0 0 1-1.5-5.19c0-5.43 4.42-9.85 9.86-9.85 2.63 0 5.1 1.03 6.95 2.88a9.78 9.78 0 0 1 2.88 6.97c0 5.43-4.42 9.85-9.85 9.85zm5.41-7.38c-.3-.15-1.76-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.95 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.8-1.49-1.79-1.66-2.09-.18-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.88 1.22 3.08c.15.2 2.1 3.21 5.08 4.5.71.31 1.27.5 1.71.64.72.23 1.37.2 1.89.12.58-.09 1.76-.72 2.01-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35z"
+				fill="currentColor"
+			/>
+		</svg>
+	</a>
 </div>
 
 <style>
@@ -635,6 +650,36 @@
 		min-height: 100vh;
 		margin: 0 auto;
 		padding: 0 24px 64px;
+	}
+	.whatsapp-fab {
+		position: fixed;
+		right: max(16px, calc((100vw - 880px) / 2 + 24px));
+		bottom: max(18px, env(safe-area-inset-bottom));
+		z-index: 30;
+		display: inline-flex;
+		width: 48px;
+		height: 48px;
+		align-items: center;
+		justify-content: center;
+		padding: 5px;
+		color: white;
+		background: #20c76a;
+		border: 1px solid rgba(0, 0, 0, 0.08);
+		border-radius: 50%;
+		box-shadow: 0 8px 24px rgba(22, 71, 42, 0.28);
+		text-decoration: none;
+		transition:
+			background-color 150ms ease,
+			transform 150ms ease;
+	}
+	.whatsapp-fab:hover {
+		background: #18b95e;
+		transform: translateY(-2px);
+	}
+	.whatsapp-fab svg {
+		width: 28px;
+		height: 28px;
+		flex: 0 0 auto;
 	}
 	.app-header {
 		min-height: 74px;
