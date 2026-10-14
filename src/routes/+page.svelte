@@ -104,6 +104,7 @@
 			showPartners = false;
 			analyzing = false;
 			window.setTimeout(() => {
+				if (window.matchMedia('(min-width: 1000px)').matches) return;
 				document.getElementById('analise-resultado')?.scrollIntoView({
 					behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
 						? 'auto'
@@ -127,7 +128,9 @@
 		const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 			? 'auto'
 			: 'smooth';
-		document.getElementById('verificador')?.scrollIntoView({ behavior, block: 'center' });
+		if (!window.matchMedia('(min-width: 1000px)').matches) {
+			document.getElementById('verificador')?.scrollIntoView({ behavior, block: 'center' });
+		}
 		document.getElementById('job-text')?.focus({ preventScroll: true });
 	}
 
@@ -183,505 +186,530 @@
 		/>
 	</header>
 
-	<main>
-		<section class="mb-6">
-			<h1>Antes de aceitar,<br /><em>cheque a proposta.</em></h1>
-			<p class="intro-copy">
-				Cole a mensagem ou o texto do anúncio. Vou destacar sinais de alerta e sugerir um próximo
-				passo.
-			</p>
-		</section>
-
-		<section class="checker-card" id="verificador" aria-labelledby="checker-title">
-			<div class="card-heading">
-				<div>
-					<h2 id="checker-title">Texto da oportunidade</h2>
-					<p>Cole o texto ou anexe um print. Não inclua seus dados pessoais.</p>
-				</div>
-			</div>
-
-			{#if imageUrl}
-				<div class="attachment-preview">
-					<img src={imageUrl} alt="Prévia do print anexado" />
-					<div class="attachment-info">
-						<strong>{imageName}</strong>
-						<span
-							>{imageName === 'Print de exemplo'
-								? 'Imagem fictícia para demonstração'
-								: 'Prévia da imagem selecionada'}</span
-						>
-					</div>
-					<button
-						class="remove-attachment"
-						type="button"
-						onclick={removeImage}
-						aria-label="Remover imagem">×</button
-					>
-				</div>
-			{/if}
-
-			{#if ocrState !== 'idle'}
-				<div
-					class="ocr-status"
-					class:ocr-is-reading={ocrState === 'reading'}
-					class:ocr-is-ready={ocrState === 'ready'}
-					id="ocr-status"
-					role="status"
-					aria-live="polite"
-				>
-					<span class="ocr-status-mark" aria-hidden="true"
-						>{ocrState === 'reading' ? '…' : '✓'}</span
-					>
-					<span
-						>{ocrState === 'reading'
-							? 'Simulando leitura do print…'
-							: 'Transcrição fictícia pré-carregada; o texto não foi extraído da imagem. Revise antes de analisar.'}</span
-					>
-				</div>
-			{/if}
-
-			<label class="visually-hidden" for="job-text">Texto da vaga para analisar</label>
-			<textarea
-				id="job-text"
-				bind:value={jobText}
-				placeholder="Cole aqui a vaga ou a mensagem que você recebeu…"
-				aria-describedby={ocrState === 'idle' ? 'input-help' : 'input-help ocr-status'}
-				readonly={ocrState === 'reading'}
-				oninput={() => {
-					result = null;
-					showPartners = false;
-					errorMessage = '';
-				}}></textarea>
-			<div class="input-meta" id="input-help">
-				<span>Você pode editar o texto antes de analisar.</span>
-				<span>{jobText.length} caracteres</span>
-			</div>
-
-			{#if errorMessage}<p class="input-error" role="alert">{errorMessage}</p>{/if}
-
-			<div class="actions">
-				<button
-					class="analyze-button"
-					type="button"
-					onclick={analyze}
-					disabled={analyzing || ocrState === 'reading'}
-				>
-					{#if analyzing}
-						<span class="button-spinner" aria-hidden="true"></span> Analisando…
-					{:else if ocrState === 'reading'}
-						<span class="button-spinner" aria-hidden="true"></span> Simulando OCR…
-					{:else}
-						<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-							<circle cx="10.8" cy="10.8" r="7.4" />
-							<path d="m16.2 16.2 4.3 4.3M8 11.1l1.9 1.9 4-4.1" />
-						</svg>
-						Analisar oportunidade
-					{/if}
-				</button>
-				<input
-					bind:this={fileInput}
-					class="file-input"
-					type="file"
-					accept="image/*"
-					aria-label="Selecionar print da vaga"
-					onchange={handleImageSelect}
-				/>
-				<button class="image-button" type="button" onclick={() => fileInput?.click()}>
-					<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-						<rect x="3.5" y="4" width="17" height="16" rx="2.5" />
-						<circle cx="9" cy="9.5" r="1.7" />
-						<path d="m5 17 4.7-4.5 3.1 2.8 2.1-2 4.1 3.7" />
-					</svg>
-					Anexar print
-				</button>
-			</div>
-
-			<div class="examples">
-				<span>Experimente:</span>
-				{#each examples as example (example.label)}
-					<button type="button" class="example-button" onclick={() => useExample(example.text)}
-						>{example.label}</button
-					>
-				{/each}
-				<button type="button" class="example-button" onclick={useMockPrint}>Print de exemplo</button
-				>
-			</div>
-
-			{#if analyzing}
-				<div class="analysis-loading" role="status" aria-live="polite">
-					<span class="loading-mark">✳</span>
-					<div>
-						<strong>Conferindo os sinais</strong><span
-							>A análise roda no seu aparelho; o texto não é enviado.</span
-						>
-					</div>
-				</div>
-			{/if}
-		</section>
-
-		{#if result}
-			<section
-				class="result-card"
-				id="analise-resultado"
-				class:risk-high={result.level === 'alto'}
-				class:risk-medium={result.level === 'atencao'}
-				class:risk-low={result.level === 'baixo'}
-				aria-live="polite"
-			>
-				<div class="result-summary">
-					<div class="score" aria-label="Nota de risco {result.score} de 90">
-						<strong>{result.score}</strong><span>/90</span>
-					</div>
-					<div class="summary-copy">
-						<span class="risk-label">{levelLabel[result.level]}</span>
-						<h2>{result.summary}</h2>
-					</div>
-					<button class="new-analysis" type="button" onclick={startOver}>Limpar</button>
-				</div>
-
-				<div class="scale" aria-hidden="true">
-					<div class="scale-track">
-						<span class="scale-marker" style:left={scalePos(result.score)}></span>
-					</div>
-					<div class="scale-labels"><span>Baixo</span><span>Atenção</span><span>Alto</span></div>
-				</div>
-
-				<p class="breakdown">
-					Soma dos pesos: <strong>{result.rawPoints}</strong> ·
-					{result.signals.length}
-					{result.signals.length === 1 ? 'sinal encontrado' : 'sinais encontrados'}
-					{#if result.criticalCount}
-						· <strong
-							>{result.criticalCount} {result.criticalCount === 1 ? 'crítico' : 'críticos'}</strong
-						>
-					{/if}
+	<main class="workspace">
+		<div class="workspace-primary">
+			<section class="hero">
+				<h1>Antes de aceitar,<br /><em>cheque a proposta.</em></h1>
+				<p class="intro-copy">
+					Cole a mensagem ou o texto do anúncio. Vou destacar sinais de alerta e sugerir um próximo
+					passo.
 				</p>
-				{#if result.escalations.length}
-					<ul class="escalations">
-						{#each result.escalations as esc (esc.rule)}
-							<li>{esc.label}</li>
-						{/each}
-					</ul>
-				{/if}
+			</section>
 
-				<div class="findings">
-					<h3>Sinais encontrados</h3>
-					{#if result.signals.length}
-						<ul>
-							{#each result.signals as s (s.signal.id)}
-								<li>
-									<span
-										class="finding-mark"
-										class:mark-alert={s.signal.critical || s.signal.weight >= 4}
-										class:mark-caution={!s.signal.critical && s.signal.weight < 4}
-										aria-hidden="true">{s.signal.critical ? '!' : '·'}</span
-									>
-									<div>
-										<strong>
-											{s.signal.title}
-											<span class="weight">+{s.signal.weight}</span>
-											{#if s.signal.critical}<span class="critical-tag">crítico</span>{/if}
-										</strong>
-										<span>{s.signal.why}</span>
-										{#each s.evidence as e (e.start)}
-											<q class="evidence"
-												>{#each e.parts as part, i (i)}{#if part.mark}<mark>{part.text}</mark
-														>{:else}{part.text}{/if}{/each}</q
-											>
-										{/each}
-										{#each s.notes as note (note)}<small class="note">{note}</small>{/each}
-									</div>
-								</li>
-							{/each}
-						</ul>
-					{:else}
-						<p class="empty-findings">Nenhum sinal da nossa lista apareceu neste texto.</p>
-					{/if}
+			<section class="checker-card" id="verificador" aria-labelledby="checker-title">
+				<div class="card-heading">
+					<div>
+						<h2 id="checker-title">Texto da oportunidade</h2>
+						<p>Cole o texto ou anexe um print. Não inclua seus dados pessoais.</p>
+					</div>
 				</div>
 
-				{#if result.review.length}
-					<div class="findings review">
-						<h3>Pontos para conferir <span>(não somam pontos)</span></h3>
-						<ul>
-							{#each result.review as s (s.signal.id)}
-								<li>
-									<span class="finding-mark mark-info" aria-hidden="true">?</span>
-									<div>
-										<strong>{s.signal.title}</strong>
-										{#each s.notes as note (note)}<span>{note}</span>{/each}
-										{#each s.evidence as e (e.start)}
-											<q class="evidence"
-												>{#each e.parts as part, i (i)}{#if part.mark}<mark>{part.text}</mark
-														>{:else}{part.text}{/if}{/each}</q
-											>
-										{/each}
-									</div>
-								</li>
-							{/each}
-						</ul>
+				{#if imageUrl}
+					<div class="attachment-preview">
+						<img src={imageUrl} alt="Prévia do print anexado" />
+						<div class="attachment-info">
+							<strong>{imageName}</strong>
+							<span
+								>{imageName === 'Print de exemplo'
+									? 'Imagem fictícia para demonstração'
+									: 'Prévia da imagem selecionada'}</span
+							>
+						</div>
+						<button
+							class="remove-attachment"
+							type="button"
+							onclick={removeImage}
+							aria-label="Remover imagem">×</button
+						>
 					</div>
 				{/if}
 
-				{#if result.level === 'alto'}
-					<div class="next-step support-panel" id="rede-de-apoio">
-						<div>
-							<span class="next-kicker">Você não precisa passar por isso sozinha</span>
-							<h3>Pause e procure orientação antes de responder.</h3>
-							<p>{result.action} Guarde as mensagens e converse com alguém de confiança.</p>
-						</div>
-						<div class="support-links">
-							<a href="tel:180"><strong>180</strong><span>Disque 180 · orientação e apoio</span></a>
-							<a href="tel:100"><strong>100</strong><span>Disque 100 · denúncias</span></a>
-							<a class="urgent-link" href="tel:190">Em perigo imediato? Ligue 190</a>
-						</div>
-						<div class="job-links">
-							<span>Buscar vagas em canais oficiais</span>
-							<a
-								href="https://www.gov.br/pt-br/servicos/buscar-emprego-no-sistema-nacional-de-emprego-sine"
-								target="_blank"
-								rel="noreferrer">SINE ↗</a
-							>
-							<a href="https://idt.org.br/vagas-disponiveis" target="_blank" rel="noreferrer"
-								>IDT/SINE ↗</a
-							>
-						</div>
-					</div>
-				{:else if result.level === 'atencao'}
-					<div class="next-step caution-panel">
-						<div>
-							<span class="next-kicker">Antes de responder</span>
-							<h3>Confirme os dados da empresa.</h3>
-							<p>{result.action}</p>
-						</div>
-						<a class="simple-link" href="tel:180">Precisa conversar? Ligue 180</a>
-					</div>
-				{:else}
-					<div class="next-step learning-panel">
-						<div>
-							<span class="next-kicker">Um próximo passo para {result.role}</span>
-							<h3>Explore uma formação gratuita.</h3>
-							<p>{result.action}</p>
-						</div>
-						<a
-							class="simple-link"
-							href="https://www.ev.org.br/cursos/atendimento-ao-publico"
-							target="_blank"
-							rel="noreferrer">Atendimento ao Público · Fundação Bradesco ↗</a
+				{#if ocrState !== 'idle'}
+					<div
+						class="ocr-status"
+						class:ocr-is-reading={ocrState === 'reading'}
+						class:ocr-is-ready={ocrState === 'ready'}
+						id="ocr-status"
+						role="status"
+						aria-live="polite"
+					>
+						<span class="ocr-status-mark" aria-hidden="true"
+							>{ocrState === 'reading' ? '…' : '✓'}</span
+						>
+						<span
+							>{ocrState === 'reading'
+								? 'Simulando leitura do print…'
+								: 'Transcrição fictícia pré-carregada; o texto não foi extraído da imagem. Revise antes de analisar.'}</span
 						>
 					</div>
 				{/if}
-				{#if result.level !== 'baixo'}
-					<div class="partner-recs">
-						<button
-							class="partner-recs-toggle"
-							type="button"
-							aria-expanded={showPartners}
-							aria-controls="partner-recs-panel"
-							onclick={() => (showPartners = !showPartners)}
-						>
+
+				<label class="visually-hidden" for="job-text">Texto da vaga para analisar</label>
+				<textarea
+					id="job-text"
+					bind:value={jobText}
+					placeholder="Cole aqui a vaga ou a mensagem que você recebeu…"
+					aria-describedby={ocrState === 'idle' ? 'input-help' : 'input-help ocr-status'}
+					readonly={ocrState === 'reading'}
+					oninput={() => {
+						result = null;
+						showPartners = false;
+						errorMessage = '';
+					}}></textarea>
+				<div class="input-meta" id="input-help">
+					<span>Você pode editar o texto antes de analisar.</span>
+					<span>{jobText.length} caracteres</span>
+				</div>
+
+				{#if errorMessage}<p class="input-error" role="alert">{errorMessage}</p>{/if}
+
+				<div class="actions">
+					<button
+						class="analyze-button"
+						type="button"
+						onclick={analyze}
+						disabled={analyzing || ocrState === 'reading'}
+					>
+						{#if analyzing}
+							<span class="button-spinner" aria-hidden="true"></span> Analisando…
+						{:else if ocrState === 'reading'}
+							<span class="button-spinner" aria-hidden="true"></span> Simulando OCR…
+						{:else}
 							<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
 								<circle cx="10.8" cy="10.8" r="7.4" />
 								<path d="m16.2 16.2 4.3 4.3M8 11.1l1.9 1.9 4-4.1" />
 							</svg>
-							{showPartners
-								? 'Ocultar vagas de parceiros'
-								: 'Reconhecer função e ver vagas de parceiros'}
-						</button>
-						{#if showPartners}
-							<div
-								class="partner-recs-panel"
-								id="partner-recs-panel"
-								role="region"
-								aria-label="Vagas de empresas parceiras"
+							Analisar oportunidade
+						{/if}
+					</button>
+					<input
+						bind:this={fileInput}
+						class="file-input"
+						type="file"
+						accept="image/*"
+						aria-label="Selecionar print da vaga"
+						onchange={handleImageSelect}
+					/>
+					<button class="image-button" type="button" onclick={() => fileInput?.click()}>
+						<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+							<rect x="3.5" y="4" width="17" height="16" rx="2.5" />
+							<circle cx="9" cy="9.5" r="1.7" />
+							<path d="m5 17 4.7-4.5 3.1 2.8 2.1-2 4.1 3.7" />
+						</svg>
+						Anexar print
+					</button>
+				</div>
+
+				<div class="examples">
+					<span>Experimente:</span>
+					{#each examples as example (example.label)}
+						<button type="button" class="example-button" onclick={() => useExample(example.text)}
+							>{example.label}</button
+						>
+					{/each}
+					<button type="button" class="example-button" onclick={useMockPrint}
+						>Print de exemplo</button
+					>
+				</div>
+
+				{#if analyzing}
+					<div class="analysis-loading" role="status" aria-live="polite">
+						<span class="loading-mark">✳</span>
+						<div>
+							<strong>Conferindo os sinais</strong><span
+								>A análise roda no seu aparelho; o texto não é enviado.</span
 							>
-								<p class="partner-recs-role">
-									{#if detectedRoleTerm}
-										Função reconhecida: <strong>{detectedRoleTerm}</strong>
-									{:else}
-										Não identificamos uma função específica neste texto. Veja vagas de empresas
-										parceiras abaixo.
-									{/if}
-								</p>
-								<ul>
-									{#each partnerRecommendations as v (v.id)}
-										<li>
-											<div class="partner-vacancy-heading">
-												<strong>{v.title}</strong>
-												<span class="verified-tag">✓ Verificado</span>
-											</div>
-											<span class="partner-company">{v.company}</span>
-											<span class="partner-meta">{v.location} · {v.modality} · {v.salary}</span>
-										</li>
-									{/each}
-								</ul>
-							</div>
+						</div>
+					</div>
+				{/if}
+			</section>
+		</div>
+
+		<div class="workspace-secondary">
+			{#if result}
+				<section
+					class="result-card"
+					id="analise-resultado"
+					class:risk-high={result.level === 'alto'}
+					class:risk-medium={result.level === 'atencao'}
+					class:risk-low={result.level === 'baixo'}
+					aria-live="polite"
+				>
+					<div class="result-summary">
+						<div class="score" aria-label="Nota de risco {result.score} de 90">
+							<strong>{result.score}</strong><span>/90</span>
+						</div>
+						<div class="summary-copy">
+							<span class="risk-label">{levelLabel[result.level]}</span>
+							<h2>{result.summary}</h2>
+						</div>
+						<button class="new-analysis" type="button" onclick={startOver}>Limpar</button>
+					</div>
+
+					<div class="scale" aria-hidden="true">
+						<div class="scale-track">
+							<span class="scale-marker" style:left={scalePos(result.score)}></span>
+						</div>
+						<div class="scale-labels"><span>Baixo</span><span>Atenção</span><span>Alto</span></div>
+					</div>
+
+					<p class="breakdown">
+						Soma dos pesos: <strong>{result.rawPoints}</strong> ·
+						{result.signals.length}
+						{result.signals.length === 1 ? 'sinal encontrado' : 'sinais encontrados'}
+						{#if result.criticalCount}
+							· <strong
+								>{result.criticalCount}
+								{result.criticalCount === 1 ? 'crítico' : 'críticos'}</strong
+							>
+						{/if}
+					</p>
+					{#if result.escalations.length}
+						<ul class="escalations">
+							{#each result.escalations as esc (esc.rule)}
+								<li>{esc.label}</li>
+							{/each}
+						</ul>
+					{/if}
+
+					<div class="findings">
+						<h3>Sinais encontrados</h3>
+						{#if result.signals.length}
+							<ul>
+								{#each result.signals as s (s.signal.id)}
+									<li>
+										<span
+											class="finding-mark"
+											class:mark-alert={s.signal.critical || s.signal.weight >= 4}
+											class:mark-caution={!s.signal.critical && s.signal.weight < 4}
+											aria-hidden="true">{s.signal.critical ? '!' : '·'}</span
+										>
+										<div>
+											<strong>
+												{s.signal.title}
+												<span class="weight">+{s.signal.weight}</span>
+												{#if s.signal.critical}<span class="critical-tag">crítico</span>{/if}
+											</strong>
+											<span>{s.signal.why}</span>
+											{#each s.evidence as e (e.start)}
+												<q class="evidence"
+													>{#each e.parts as part, i (i)}{#if part.mark}<mark>{part.text}</mark
+															>{:else}{part.text}{/if}{/each}</q
+												>
+											{/each}
+											{#each s.notes as note (note)}<small class="note">{note}</small>{/each}
+										</div>
+									</li>
+								{/each}
+							</ul>
+						{:else}
+							<p class="empty-findings">Nenhum sinal da nossa lista apareceu neste texto.</p>
 						{/if}
 					</div>
-				{/if}
-				<p class="disclaimer">
-					Resultado indicativo. Não confirma se a vaga é legítima ou fraudulenta.
-				</p>
+
+					{#if result.review.length}
+						<div class="findings review">
+							<h3>Pontos para conferir <span>(não somam pontos)</span></h3>
+							<ul>
+								{#each result.review as s (s.signal.id)}
+									<li>
+										<span class="finding-mark mark-info" aria-hidden="true">?</span>
+										<div>
+											<strong>{s.signal.title}</strong>
+											{#each s.notes as note (note)}<span>{note}</span>{/each}
+											{#each s.evidence as e (e.start)}
+												<q class="evidence"
+													>{#each e.parts as part, i (i)}{#if part.mark}<mark>{part.text}</mark
+															>{:else}{part.text}{/if}{/each}</q
+												>
+											{/each}
+										</div>
+									</li>
+								{/each}
+							</ul>
+						</div>
+					{/if}
+
+					{#if result.level === 'alto'}
+						<div class="next-step support-panel" id="rede-de-apoio">
+							<div>
+								<span class="next-kicker">Você não precisa passar por isso sozinha</span>
+								<h3>Pause e procure orientação antes de responder.</h3>
+								<p>{result.action} Guarde as mensagens e converse com alguém de confiança.</p>
+							</div>
+							<div class="support-links">
+								<a href="tel:180"
+									><strong>180</strong><span>Disque 180 · orientação e apoio</span></a
+								>
+								<a href="tel:100"><strong>100</strong><span>Disque 100 · denúncias</span></a>
+								<a class="urgent-link" href="tel:190">Em perigo imediato? Ligue 190</a>
+							</div>
+							<div class="job-links">
+								<span>Buscar vagas em canais oficiais</span>
+								<a
+									href="https://www.gov.br/pt-br/servicos/buscar-emprego-no-sistema-nacional-de-emprego-sine"
+									target="_blank"
+									rel="noreferrer">SINE ↗</a
+								>
+								<a href="https://idt.org.br/vagas-disponiveis" target="_blank" rel="noreferrer"
+									>IDT/SINE ↗</a
+								>
+							</div>
+						</div>
+					{:else if result.level === 'atencao'}
+						<div class="next-step caution-panel">
+							<div>
+								<span class="next-kicker">Antes de responder</span>
+								<h3>Confirme os dados da empresa.</h3>
+								<p>{result.action}</p>
+							</div>
+							<a class="simple-link" href="tel:180">Precisa conversar? Ligue 180</a>
+						</div>
+					{:else}
+						<div class="next-step learning-panel">
+							<div>
+								<span class="next-kicker">Um próximo passo para {result.role}</span>
+								<h3>Explore uma formação gratuita.</h3>
+								<p>{result.action}</p>
+							</div>
+							<a
+								class="simple-link"
+								href="https://www.ev.org.br/cursos/atendimento-ao-publico"
+								target="_blank"
+								rel="noreferrer">Atendimento ao Público · Fundação Bradesco ↗</a
+							>
+						</div>
+					{/if}
+					{#if result.level !== 'baixo'}
+						<div class="partner-recs">
+							<button
+								class="partner-recs-toggle"
+								type="button"
+								aria-expanded={showPartners}
+								aria-controls="partner-recs-panel"
+								onclick={() => (showPartners = !showPartners)}
+							>
+								<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+									<circle cx="10.8" cy="10.8" r="7.4" />
+									<path d="m16.2 16.2 4.3 4.3M8 11.1l1.9 1.9 4-4.1" />
+								</svg>
+								{showPartners
+									? 'Ocultar vagas de parceiros'
+									: 'Reconhecer função e ver vagas de parceiros'}
+							</button>
+							{#if showPartners}
+								<div
+									class="partner-recs-panel"
+									id="partner-recs-panel"
+									role="region"
+									aria-label="Vagas de empresas parceiras"
+								>
+									<p class="partner-recs-role">
+										{#if detectedRoleTerm}
+											Função reconhecida: <strong>{detectedRoleTerm}</strong>
+										{:else}
+											Não identificamos uma função específica neste texto. Veja vagas de empresas
+											parceiras abaixo.
+										{/if}
+									</p>
+									<ul>
+										{#each partnerRecommendations as v (v.id)}
+											<li>
+												<div class="partner-vacancy-heading">
+													<strong>{v.title}</strong>
+													<span class="verified-tag">✓ Verificado</span>
+												</div>
+												<span class="partner-company">{v.company}</span>
+												<span class="partner-meta">{v.location} · {v.modality} · {v.salary}</span>
+											</li>
+										{/each}
+									</ul>
+								</div>
+							{/if}
+						</div>
+					{/if}
+					<p class="disclaimer">
+						Resultado indicativo. Não confirma se a vaga é legítima ou fraudulenta.
+					</p>
+				</section>
+			{:else}
+				<section class="result-empty">
+					<span class="result-empty-icon" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none">
+							<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.3 7.5 9.5 4.4-1.2 7.5-4.9 7.5-9.5V6L12 3Z" />
+							<path d="M12 8.5v4" />
+							<path d="M12 15.8h.01" />
+						</svg>
+					</span>
+					<h2>O resultado aparece aqui</h2>
+					<p>
+						Cole o texto ao lado e toque em analisar. Mostro os sinais de alerta encontrados e o
+						próximo passo seguro.
+					</p>
+				</section>
+			{/if}
+
+			<section
+				class="helpline-section"
+				id="canais-de-apoio"
+				aria-label="Canais de orientação e denúncia"
+			>
+				<div
+					class="helpline-tabs"
+					role="tablist"
+					aria-label="Escolha um canal"
+					tabindex="-1"
+					onkeydown={handleHelplineTabKeydown}
+				>
+					<button
+						id="helpline-tab-180"
+						class="helpline-tab"
+						class:active={selectedHelpline === '180'}
+						role="tab"
+						aria-selected={selectedHelpline === '180'}
+						aria-controls="helpline-panel-180"
+						tabindex={selectedHelpline === '180' ? 0 : -1}
+						onclick={() => (selectedHelpline = '180')}>Disque 180</button
+					>
+					<button
+						id="helpline-tab-100"
+						class="helpline-tab"
+						class:active={selectedHelpline === '100'}
+						role="tab"
+						aria-selected={selectedHelpline === '100'}
+						aria-controls="helpline-panel-100"
+						tabindex={selectedHelpline === '100' ? 0 : -1}
+						onclick={() => (selectedHelpline = '100')}>Disque 100</button
+					>
+				</div>
+
+				<div
+					class="helpline-panel"
+					id="helpline-panel-180"
+					role="tabpanel"
+					aria-labelledby="helpline-tab-180"
+					hidden={selectedHelpline !== '180'}
+				>
+					{#if selectedHelpline === '180'}
+						<div class="helpline-intro">
+							<div class="helpline-copy">
+								<p class="helpline-kicker">Apoio e informação</p>
+								<h2 id="helpline-title-180">Você pode buscar orientação pelo Ligue 180.</h2>
+								<p>
+									A Central orienta sobre direitos e serviços de atendimento à mulher. Você pode
+									ligar para tirar dúvidas ou pedir ajuda para encontrar um serviço perto de você.
+								</p>
+							</div>
+							<a class="helpline-number" href="tel:180" aria-label="Ligar para o Ligue 180">
+								<span>Disque</span>
+								<strong>180</strong>
+								<span>gratuito · 24 horas</span>
+							</a>
+						</div>
+
+						<div class="helpline-video">
+							<iframe
+								src="https://www.youtube-nocookie.com/embed/y9ysRfE4rPk?rel=0"
+								title="Vídeo sobre a Central de Atendimento à Mulher Ligue 180"
+								loading="lazy"
+								referrerpolicy="strict-origin-when-cross-origin"
+								allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+								allowfullscreen
+							></iframe>
+						</div>
+
+						<div class="helpline-details">
+							<div class="helpline-how">
+								<h3>Como ligar</h3>
+								<ol>
+									<li>Abra o aplicativo Telefone do celular ou use um telefone fixo.</li>
+									<li>Digite <strong>180</strong> e toque no botão para ligar.</li>
+									<li>Peça orientação, tire dúvidas ou conte o que está acontecendo.</li>
+								</ol>
+								<p>Você também pode ligar para buscar orientação para outra mulher.</p>
+							</div>
+							<div class="helpline-actions">
+								<a
+									class="helpline-primary"
+									href="https://www.gov.br/mulheres/pt-br/ligue180"
+									target="_blank"
+									rel="noreferrer">Conheça a Central e os serviços disponíveis</a
+								>
+								<a class="helpline-secondary" href="tel:180">Ligar para 180</a>
+								<a
+									class="helpline-secondary"
+									href="https://wa.me/556196100180"
+									target="_blank"
+									rel="noreferrer">Conversar pelo WhatsApp</a
+								>
+								<p class="helpline-emergency">
+									Se houver perigo imediato ou uma agressão estiver acontecendo, ligue <a
+										href="tel:190">190</a
+									>.
+								</p>
+							</div>
+						</div>
+					{/if}
+				</div>
+				<div
+					class="helpline-panel"
+					id="helpline-panel-100"
+					role="tabpanel"
+					aria-labelledby="helpline-tab-100"
+					hidden={selectedHelpline !== '100'}
+				>
+					{#if selectedHelpline === '100'}
+						<div class="helpline-intro">
+							<div class="helpline-copy">
+								<p class="helpline-kicker">Denúncias de violações de direitos</p>
+								<h2 id="helpline-title-100">O Disque 100 recebe relatos e denúncias.</h2>
+								<p>
+									Você pode relatar uma violação de direitos humanos vivida por você ou por outra
+									pessoa.
+								</p>
+							</div>
+							<a class="helpline-number" href="tel:100" aria-label="Ligar para o Disque 100">
+								<span>Disque</span>
+								<strong>100</strong>
+								<span>gratuito · 24 horas</span>
+							</a>
+						</div>
+
+						<div class="helpline-video">
+							<iframe
+								src="https://www.youtube-nocookie.com/embed/ucWMs-gRLaY?rel=0"
+								title="Vídeo sobre o Disque Direitos Humanos 100"
+								loading="lazy"
+								referrerpolicy="strict-origin-when-cross-origin"
+								allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+								allowfullscreen
+							></iframe>
+						</div>
+
+						<div class="helpline-details">
+							<div class="helpline-how">
+								<h3>Você pode ligar mesmo sem ser a vítima</h3>
+								<p>
+									O atendimento é gratuito, funciona 24 horas e recebe relatos de qualquer pessoa.
+								</p>
+							</div>
+							<div class="helpline-actions">
+								<a
+									class="helpline-primary"
+									href="https://www.gov.br/pt-br/servicos/denunciar-violacao-de-direitos-humanos"
+									target="_blank"
+									rel="noreferrer">Saiba como fazer uma denúncia</a
+								>
+								<a class="helpline-secondary" href="tel:100">Ligar para 100</a>
+								<p class="helpline-emergency">
+									Em perigo imediato, ligue <a href="tel:190">190</a>.
+								</p>
+							</div>
+						</div>
+					{/if}
+				</div>
 			</section>
-		{/if}
-
-		<section
-			class="helpline-section"
-			id="canais-de-apoio"
-			aria-label="Canais de orientação e denúncia"
-		>
-			<div
-				class="helpline-tabs"
-				role="tablist"
-				aria-label="Escolha um canal"
-				tabindex="-1"
-				onkeydown={handleHelplineTabKeydown}
-			>
-				<button
-					id="helpline-tab-180"
-					class="helpline-tab"
-					class:active={selectedHelpline === '180'}
-					role="tab"
-					aria-selected={selectedHelpline === '180'}
-					aria-controls="helpline-panel-180"
-					tabindex={selectedHelpline === '180' ? 0 : -1}
-					onclick={() => (selectedHelpline = '180')}>Disque 180</button
-				>
-				<button
-					id="helpline-tab-100"
-					class="helpline-tab"
-					class:active={selectedHelpline === '100'}
-					role="tab"
-					aria-selected={selectedHelpline === '100'}
-					aria-controls="helpline-panel-100"
-					tabindex={selectedHelpline === '100' ? 0 : -1}
-					onclick={() => (selectedHelpline = '100')}>Disque 100</button
-				>
-			</div>
-
-			<div
-				class="helpline-panel"
-				id="helpline-panel-180"
-				role="tabpanel"
-				aria-labelledby="helpline-tab-180"
-				hidden={selectedHelpline !== '180'}
-			>
-				{#if selectedHelpline === '180'}
-					<div class="helpline-intro">
-						<div class="helpline-copy">
-							<p class="helpline-kicker">Apoio e informação</p>
-							<h2 id="helpline-title-180">Você pode buscar orientação pelo Ligue 180.</h2>
-							<p>
-								A Central orienta sobre direitos e serviços de atendimento à mulher. Você pode ligar
-								para tirar dúvidas ou pedir ajuda para encontrar um serviço perto de você.
-							</p>
-						</div>
-						<a class="helpline-number" href="tel:180" aria-label="Ligar para o Ligue 180">
-							<span>Disque</span>
-							<strong>180</strong>
-							<span>gratuito · 24 horas</span>
-						</a>
-					</div>
-
-					<div class="helpline-video">
-						<iframe
-							src="https://www.youtube-nocookie.com/embed/y9ysRfE4rPk?rel=0"
-							title="Vídeo sobre a Central de Atendimento à Mulher Ligue 180"
-							loading="lazy"
-							referrerpolicy="strict-origin-when-cross-origin"
-							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-							allowfullscreen
-						></iframe>
-					</div>
-
-					<div class="helpline-details">
-						<div class="helpline-how">
-							<h3>Como ligar</h3>
-							<ol>
-								<li>Abra o aplicativo Telefone do celular ou use um telefone fixo.</li>
-								<li>Digite <strong>180</strong> e toque no botão para ligar.</li>
-								<li>Peça orientação, tire dúvidas ou conte o que está acontecendo.</li>
-							</ol>
-							<p>Você também pode ligar para buscar orientação para outra mulher.</p>
-						</div>
-						<div class="helpline-actions">
-							<a
-								class="helpline-primary"
-								href="https://www.gov.br/mulheres/pt-br/ligue180"
-								target="_blank"
-								rel="noreferrer">Conheça a Central e os serviços disponíveis</a
-							>
-							<a class="helpline-secondary" href="tel:180">Ligar para 180</a>
-							<a
-								class="helpline-secondary"
-								href="https://wa.me/556196100180"
-								target="_blank"
-								rel="noreferrer">Conversar pelo WhatsApp</a
-							>
-							<p class="helpline-emergency">
-								Se houver perigo imediato ou uma agressão estiver acontecendo, ligue <a
-									href="tel:190">190</a
-								>.
-							</p>
-						</div>
-					</div>
-				{/if}
-			</div>
-			<div
-				class="helpline-panel"
-				id="helpline-panel-100"
-				role="tabpanel"
-				aria-labelledby="helpline-tab-100"
-				hidden={selectedHelpline !== '100'}
-			>
-				{#if selectedHelpline === '100'}
-					<div class="helpline-intro">
-						<div class="helpline-copy">
-							<p class="helpline-kicker">Denúncias de violações de direitos</p>
-							<h2 id="helpline-title-100">O Disque 100 recebe relatos e denúncias.</h2>
-							<p>
-								Você pode relatar uma violação de direitos humanos vivida por você ou por outra
-								pessoa.
-							</p>
-						</div>
-						<a class="helpline-number" href="tel:100" aria-label="Ligar para o Disque 100">
-							<span>Disque</span>
-							<strong>100</strong>
-							<span>gratuito · 24 horas</span>
-						</a>
-					</div>
-
-					<div class="helpline-video">
-						<iframe
-							src="https://www.youtube-nocookie.com/embed/ucWMs-gRLaY?rel=0"
-							title="Vídeo sobre o Disque Direitos Humanos 100"
-							loading="lazy"
-							referrerpolicy="strict-origin-when-cross-origin"
-							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-							allowfullscreen
-						></iframe>
-					</div>
-
-					<div class="helpline-details">
-						<div class="helpline-how">
-							<h3>Você pode ligar mesmo sem ser a vítima</h3>
-							<p>
-								O atendimento é gratuito, funciona 24 horas e recebe relatos de qualquer pessoa.
-							</p>
-						</div>
-						<div class="helpline-actions">
-							<a
-								class="helpline-primary"
-								href="https://www.gov.br/pt-br/servicos/denunciar-violacao-de-direitos-humanos"
-								target="_blank"
-								rel="noreferrer">Saiba como fazer uma denúncia</a
-							>
-							<a class="helpline-secondary" href="tel:100">Ligar para 100</a>
-							<p class="helpline-emergency">Em perigo imediato, ligue <a href="tel:190">190</a>.</p>
-						</div>
-					</div>
-				{/if}
-			</div>
-		</section>
+		</div>
 	</main>
 </div>
 <img
@@ -727,12 +755,13 @@
 		--guava: #d9707c;
 		--paper: #fbf8f5;
 		--muted: #777078;
-		width: min(100%, 880px);
+		width: min(100%, 1180px);
 		min-height: 100vh;
 		margin: 0 auto;
-		padding: 0 24px 64px;
+		padding: 0 clamp(16px, 3vw, 40px) 64px;
 	}
 	.mascot {
+		display: none;
 		position: fixed;
 		right: 16px;
 		bottom: max(18px, env(safe-area-inset-bottom));
@@ -742,6 +771,11 @@
 		aspect-ratio: 360 / 467;
 		object-fit: contain;
 		pointer-events: none;
+	}
+	@media (min-width: 1000px) {
+		.mascot {
+			display: block;
+		}
 	}
 	.app-header {
 		min-height: 74px;
@@ -823,6 +857,70 @@
 	}
 	main {
 		margin: 32px 0;
+	}
+	.workspace {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 24px;
+		align-items: start;
+	}
+	.workspace-primary,
+	.workspace-secondary {
+		display: flex;
+		flex-direction: column;
+		gap: 24px;
+		min-width: 0;
+	}
+	.result-empty {
+		display: none;
+	}
+	@media (min-width: 1000px) {
+		.workspace {
+			grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+			gap: clamp(24px, 3vw, 40px);
+		}
+		.result-empty {
+			display: block;
+			padding: 32px 28px;
+			border: 1px dashed #e0d4d6;
+			border-radius: 18px;
+			background: #fffdfb;
+			text-align: center;
+			color: var(--muted);
+		}
+		.result-empty-icon {
+			display: grid;
+			place-items: center;
+			width: 44px;
+			height: 44px;
+			margin: 0 auto 14px;
+			border-radius: 50%;
+			background: #f6ebee;
+		}
+		.result-empty-icon svg {
+			width: 24px;
+			stroke: var(--berry);
+			stroke-width: 1.7;
+			stroke-linecap: round;
+			stroke-linejoin: round;
+		}
+		.result-empty h2 {
+			margin-bottom: 6px;
+			font-size: 17px;
+			color: var(--plum);
+		}
+		.result-empty p {
+			margin: 0 auto;
+			max-width: 34ch;
+			font-size: 14px;
+			line-height: 1.55;
+		}
+	}
+	@media (min-width: 1000px) and (min-height: 700px) {
+		.workspace-primary {
+			position: sticky;
+			top: 20px;
+		}
 	}
 	#verificador {
 		scroll-margin-top: 18px;
