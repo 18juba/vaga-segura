@@ -159,12 +159,28 @@
 
 <div class="app-shell">
 	<header class="app-header">
-		<a class="brand" href="#verificador" aria-label="Vaga Segura">
-			<span class="text-lg sm:text-xl"><strong>Esp.IA</strong></span>
+		<a class="brand" href="#verificador" aria-label="Esp.IA, espião de propostas">
+			<span class="brand-mark" aria-hidden="true">
+				<svg viewBox="0 0 24 24" fill="none">
+					<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.3 7.5 9.5 4.4-1.2 7.5-4.9 7.5-9.5V6L12 3Z" />
+					<path d="m8.8 12.2 2.3 2.3 4.2-4.6" />
+				</svg>
+			</span>
+			<span class="brand-text">
+				<span class="brand-name" aria-hidden="true">
+					<span>Esp</span><span class="brand-dot">.</span><span class="brand-ia">IA</span>
+				</span>
+				<span class="brand-tagline" aria-hidden="true">Espião de Propostas</span>
+			</span>
 		</a>
-		<div class="size-12 sm:size-14 rounded-lg">
-			<img src="/images/ods5.png" alt="" aria-hidden="true" class="rounded-lg" />
-		</div>
+		<img
+			class="ods-badge"
+			src="/images/ods5.png"
+			alt=""
+			aria-hidden="true"
+			width="554"
+			height="554"
+		/>
 	</header>
 
 	<main>
@@ -503,8 +519,7 @@
 					</div>
 				{/if}
 				<p class="disclaimer">
-					Resultado indicativo. Não confirma
-					se a vaga é legítima ou fraudulenta.
+					Resultado indicativo. Não confirma se a vaga é legítima ou fraudulenta.
 				</p>
 			</section>
 		{/if}
@@ -669,7 +684,15 @@
 		</section>
 	</main>
 </div>
-<img class="maria-mascot" src="/images/maria.png" alt="Maria, personagem do Vaga Segura" />
+<img
+	class="mascot"
+	src="/images/mascot.png"
+	alt="Mulher comemorando nova vaga de emprego"
+	width="360"
+	height="467"
+	loading="lazy"
+	decoding="async"
+/>
 
 <style>
 	:global(*) {
@@ -709,13 +732,14 @@
 		margin: 0 auto;
 		padding: 0 24px 64px;
 	}
-	.maria-mascot {
+	.mascot {
 		position: fixed;
 		right: 16px;
 		bottom: max(18px, env(safe-area-inset-bottom));
 		z-index: 20;
 		width: clamp(72px, 8vw, 100px);
 		height: auto;
+		aspect-ratio: 360 / 467;
 		object-fit: contain;
 		pointer-events: none;
 	}
@@ -724,24 +748,62 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		gap: 12px;
+		padding: 10px 0;
 		margin: 0 auto;
 		border-bottom: 1px solid #e9e1df;
 	}
 	.brand {
 		display: inline-flex;
 		align-items: center;
-		gap: 9px;
+		gap: clamp(8px, 1.5vw, 12px);
+		min-width: 0;
 		color: var(--plum);
-		font-size: 15px;
-		letter-spacing: -0.4px;
 		text-decoration: none;
+		border-radius: 12px;
 	}
-	.brand strong {
-		font-weight: 700;
+	.brand-text {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		min-width: 0;
+	}
+	.brand-name {
+		display: flex;
+		align-items: center;
+		font-size: clamp(1.5rem, 0.95rem + 2.4vw, 2.125rem);
+		line-height: 1;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		color: var(--plum);
+		white-space: nowrap;
+	}
+	.brand-dot {
+		color: var(--berry);
+	}
+	.brand-ia {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.1em 0.22em;
+		border-radius: 0.3em;
+		background: linear-gradient(135deg, var(--berry), var(--guava));
+		color: #fff;
+		letter-spacing: 0;
+	}
+	.brand-tagline {
+		font-size: clamp(10px, 0.4rem + 0.55vw, 12px);
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--berry);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.brand-mark {
-		width: 30px;
-		height: 30px;
+		flex: 0 0 auto;
+		width: clamp(34px, 6.5vw, 44px);
+		height: clamp(34px, 6.5vw, 44px);
 		display: grid;
 		place-items: center;
 	}
@@ -751,6 +813,13 @@
 		stroke-width: 1.8;
 		stroke-linecap: round;
 		stroke-linejoin: round;
+	}
+	.ods-badge {
+		flex: 0 0 auto;
+		width: clamp(40px, 7vw, 56px);
+		height: auto;
+		aspect-ratio: 1;
+		border-radius: 10px;
 	}
 	main {
 		margin: 32px 0;
@@ -1704,22 +1773,6 @@
 		}
 		.app-header {
 			min-height: 64px;
-		}
-		.brand {
-			font-size: 13px;
-		}
-		.brand-mark {
-			width: 27px;
-			height: 27px;
-		}
-		.ods-badge {
-			gap: 6px;
-			padding-right: 8px;
-			font-size: 8px;
-		}
-		.ods-badge img {
-			width: 24px;
-			height: 24px;
 		}
 		main {
 			margin-top: 32px;
