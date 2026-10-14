@@ -1,6 +1,6 @@
 /**
  * Vagas de parceiros — oportunidades cadastradas por empresas verificadas que fazem
- * parte da rede do esp.ia. Quando a usuária cola uma vaga com sinais de risco,
+ * parte da rede do Esp.IA. Quando a usuária cola uma vaga com sinais de risco,
  * sugerimos vagas reais da mesma área profissional, publicadas por empresas que já
  * passaram pela checagem de CNPJ da plataforma (em vez de mandar a usuária para
  * fora, para outros sites de emprego).
