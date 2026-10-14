@@ -104,7 +104,6 @@
 			showPartners = false;
 			analyzing = false;
 			window.setTimeout(() => {
-				if (window.matchMedia('(min-width: 1000px)').matches) return;
 				document.getElementById('analise-resultado')?.scrollIntoView({
 					behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
 						? 'auto'
@@ -128,9 +127,7 @@
 		const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 			? 'auto'
 			: 'smooth';
-		if (!window.matchMedia('(min-width: 1000px)').matches) {
-			document.getElementById('verificador')?.scrollIntoView({ behavior, block: 'center' });
-		}
+		document.getElementById('verificador')?.scrollIntoView({ behavior, block: 'center' });
 		document.getElementById('job-text')?.focus({ preventScroll: true });
 	}
 
@@ -187,7 +184,7 @@
 	</header>
 
 	<main class="workspace">
-		<div class="workspace-primary">
+		<div class="workspace-input">
 			<section class="hero">
 				<h1>Antes de aceitar,<br /><em>cheque a proposta.</em></h1>
 				<p class="intro-copy">
@@ -325,7 +322,7 @@
 			</section>
 		</div>
 
-		<div class="workspace-secondary">
+		<div class="workspace-followup">
 			{#if result}
 				<section
 					class="result-card"
@@ -530,21 +527,6 @@
 					{/if}
 					<p class="disclaimer">
 						Resultado indicativo. Não confirma se a vaga é legítima ou fraudulenta.
-					</p>
-				</section>
-			{:else}
-				<section class="result-empty">
-					<span class="result-empty-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" fill="none">
-							<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.3 7.5 9.5 4.4-1.2 7.5-4.9 7.5-9.5V6L12 3Z" />
-							<path d="M12 8.5v4" />
-							<path d="M12 15.8h.01" />
-						</svg>
-					</span>
-					<h2>O resultado aparece aqui</h2>
-					<p>
-						Cole o texto ao lado e toque em analisar. Mostro os sinais de alerta encontrados e o
-						próximo passo seguro.
 					</p>
 				</section>
 			{/if}
@@ -755,7 +737,7 @@
 		--guava: #d9707c;
 		--paper: #fbf8f5;
 		--muted: #777078;
-		width: min(100%, 1180px);
+		width: min(100%, 1280px);
 		min-height: 100vh;
 		margin: 0 auto;
 		padding: 0 clamp(16px, 3vw, 40px) 64px;
@@ -864,63 +846,12 @@
 		gap: 24px;
 		align-items: start;
 	}
-	.workspace-primary,
-	.workspace-secondary {
+	.workspace-input,
+	.workspace-followup {
 		display: flex;
 		flex-direction: column;
 		gap: 24px;
 		min-width: 0;
-	}
-	.result-empty {
-		display: none;
-	}
-	@media (min-width: 1000px) {
-		.workspace {
-			grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-			gap: clamp(24px, 3vw, 40px);
-		}
-		.result-empty {
-			display: block;
-			padding: 32px 28px;
-			border: 1px dashed #e0d4d6;
-			border-radius: 18px;
-			background: #fffdfb;
-			text-align: center;
-			color: var(--muted);
-		}
-		.result-empty-icon {
-			display: grid;
-			place-items: center;
-			width: 44px;
-			height: 44px;
-			margin: 0 auto 14px;
-			border-radius: 50%;
-			background: #f6ebee;
-		}
-		.result-empty-icon svg {
-			width: 24px;
-			stroke: var(--berry);
-			stroke-width: 1.7;
-			stroke-linecap: round;
-			stroke-linejoin: round;
-		}
-		.result-empty h2 {
-			margin-bottom: 6px;
-			font-size: 17px;
-			color: var(--plum);
-		}
-		.result-empty p {
-			margin: 0 auto;
-			max-width: 34ch;
-			font-size: 14px;
-			line-height: 1.55;
-		}
-	}
-	@media (min-width: 1000px) and (min-height: 700px) {
-		.workspace-primary {
-			position: sticky;
-			top: 20px;
-		}
 	}
 	#verificador {
 		scroll-margin-top: 18px;
